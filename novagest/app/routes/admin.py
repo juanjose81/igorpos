@@ -55,6 +55,21 @@ def asegurar_tabla_usuarios(cursor, conex):
     cursor.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS usuario VARCHAR(150);")
     conex.commit()
 
+def obtener_empresa_id_seguro_admin(cursor):
+    raw_empresa = session.get('empresa_id') or session.get('usuario_id') or session.get('user_id')
+    if not raw_empresa:
+        return 1
+    if str(raw_empresa).isdigit():
+        return int(raw_empresa)
+    try:
+        cursor.execute("SELECT id FROM usuarios WHERE usuario = %s OR nombre = %s LIMIT 1;", (str(raw_empresa), str(raw_empresa)))
+        res = cursor.fetchone()
+        if res:
+            return int(res[0])
+    except Exception:
+        pass
+    return 1
+
 # --- RUTA PRINCIPAL /admin ---
 @admin_bp.route('/admin')
 def admin_root():
@@ -239,7 +254,6 @@ def usuarios():
                     asegurar_tabla_empresas(cursor, conex)
                     asegurar_tabla_usuarios(cursor, conex)
                     
-                    # 🛑 Validación anti-duplicados para el personal interno
                     cursor.execute("SELECT id FROM usuarios WHERE LOWER(email) = LOWER(%s);", (email,))
                     usuario_existente = cursor.fetchone()
                     
@@ -277,14 +291,50 @@ def usuarios():
         
     return render_template('admin.html', usuarios=lista_usuarios, seccion='usuarios')
 
+# --- PANTALLA DE COCINA CORREGIDA CON CRONÓMETROS ---
+@admin_bp.route('/admin/cocina')
+def cocina():
+    user_id = session.get('usuario_id') or session.get('user_id')
+    if not user_id:
+        return redirect('/login')
+        
+    conex = get_db_connection()
+    cursor = conex.cursor()
+    empresa_id = obtener_empresa_id_seguro_admin(cursor)
+    
+    try:
+        cursor.execute("""
+            SELECT p.id, m.numero_mesa, p.producto, p.cantidad, p.estado, p.fecha_comandado 
+            FROM pedidos_mesa p
+            JOIN mesas m ON p.id_mesa = m.id
+            WHERE p.empresa_id = %s AND p.estado = 'Comandado'
+            ORDER BY p.id ASC;
+        """, (empresa_id,))
+        filas = cursor.fetchall()
+    except Exception as e:
+        print(f"Error al cargar cocina: {e}")
+        filas = []
+        
+    cursor.close()
+    conex.close()
+    
+    pedidos = []
+    for f in filas:
+        pedidos.append({
+            'id': f[0],
+            'mesa': f[1],
+            'producto': f[2],
+            'cantidad': f[3],
+            'estado': f[4],
+            'fecha_comandado': str(f[5]) if f[5] else ''
+        })
+        
+    return render_template('cocina.html', pedidos=pedidos)
+
 # --- REDIRECCIONES DE MÓDULOS SECUNDARIOS ---
 @admin_bp.route('/admin/personal')
 def personal():
     return redirect(url_for('admin.usuarios'))
-
-@admin_bp.route('/admin/cocina')
-def cocina():
-    return redirect('/pantalla-cocina')
 
 @admin_bp.route('/admin/bar')
 def bar():
