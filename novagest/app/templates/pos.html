@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tomar Pedido - Mesa {{ mesa[1] }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; padding: 30px; }
+        h1 { color: #38bdf8; margin-bottom: 20px; }
+        .back-link { color: #94a3b8; text-decoration: none; display: inline-block; margin-bottom: 20px; font-weight: bold; }
+        .grid-productos { display: flex; gap: 20px; flex-wrap: wrap; }
+        .prod-card { background-color: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 12px; width: 220px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .prod-card h4 { font-size: 1.1rem; margin-bottom: 8px; color: #fff; }
+        .prod-card p { color: #38bdf8; font-weight: bold; margin-bottom: 12px; }
+        .prod-card input { width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; text-align: center; font-size: 1rem; }
+        .area-tag { font-size: 0.75rem; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 10px; font-weight: bold; }
+        .cocina { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .bar { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+        .btn-comandar { background-color: #10b981; color: #fff; border: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; margin-top: 30px; width: 100%; box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4); }
+        .btn-comandar:hover { background-color: #059669; }
+    </style>
+</head>
+<body>
+    <a href="/pos" class="back-link">← Volver a Selección de Mesas</a>
+    <h1>Tomando Pedido para: 🪑 Mesa {{ mesa[1] }}</h1>
+
+    <form action="/pos/mesa/{{ mesa[0] }}" method="POST">
+        <div class="grid-productos">
+            {% for prod in productos %}
+                <div class="prod-card">
+                    <span class="area-tag {{ prod[3] }}">{{ prod[3].upper() }}</span>
+                    <h4>{{ prod[1] }}</h4>
+                    <p>${{ prod[2] }}</p>
+                    <input type="hidden" name="producto_id" value="{{ prod[0] }}">
+                    <label style="font-size: 0.8rem; color: #94a3b8; display: block; margin-bottom: 4px;">Cantidad:</label>
+                    <input type="number" name="cantidad" value="0" min="0">
+                </div>
+            {% else %}
+                <p style="color: #94a3b8;">No hay productos registrados en el menú. Agrégalos desde el Panel de Administración.</p>
+            {% endfor %}
+        </div>
+        {% if productos %}
+            <button type="submit" class="btn-comandar">🚀 Comandar Orden (Enviar a Cocina y Bar)</button>
+        {% endif %}
+    </form>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - IGOR POS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background-color: #1e293b; padding: 40px; border-radius: 12px; width: 100%; max-width: 420px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .card h2 { color: #38bdf8; margin-bottom: 8px; text-align: center; }
+        .card p { color: #94a3b8; font-size: 0.9rem; text-align: center; margin-bottom: 25px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #cbd5e1; }
+        .form-group input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background-color: #0f172a; color: #fff; font-size: 1rem; outline: none; }
+        .form-group input:focus { border-color: #38bdf8; }
+        .btn-submit { width: 100%; padding: 12px; background-color: #0284c7; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; margin-top: 10px; }
+        .btn-submit:hover { background-color: #38bdf8; color: #0f172a; }
+        .register-link { text-align: center; margin-top: 20px; font-size: 0.85rem; color: #94a3b8; }
+        .register-link a { color: #38bdf8; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>IGOR POS</h2>
+        <p>Inicia sesión en tu cuenta</p>
+        <form action="/login" method="POST">
+            <div class="form-group">
+                <label>Correo Electrónico</label>
+                <input type="email" name="email" required placeholder="correo@ejemplo.com">
+            </div>
+            <div class="form-group">
+                <label>Contraseña</label>
+                <input type="password" name="password" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn-submit">Entrar al Sistema 🚀</button>
+        </form>
+        <div class="register-link">
+            ¿No tienes una cuenta? <a href="/registro">Regístrate gratis (7 días)</a>
+        </div>
+    </div>
+</body>
+</html>

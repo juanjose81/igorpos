@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Gerencia - IGOR POS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; display: flex; min-height: 100vh; overflow-x: hidden; }
+        
+        aside { 
+            width: 260px; 
+            background-color: #1e293b; 
+            border-right: 1px solid #334155; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 20px; 
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+        aside.collapsed { transform: translateX(-100%); position: absolute; height: 100%; }
+        aside h2 { color: #38bdf8; font-size: 1.5rem; margin-bottom: 25px; text-align: center; }
+        aside a { color: #94a3b8; text-decoration: none; padding: 10px 15px; border-radius: 8px; margin-bottom: 6px; font-weight: 500; transition: 0.2s; display: block; font-size: 0.95rem; }
+        aside a:hover, aside a.active { background-color: #0284c7; color: #fff; }
+        
+        .toggle-btn {
+            background: #1e293b;
+            color: #38bdf8;
+            border: 1px solid #334155;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+            width: fit-content;
+        }
+        .toggle-btn:hover { background: #334155; color: #fff; }
+        main { flex: 1; padding: 40px; overflow-y: auto; transition: margin 0.3s ease; }
+        h1 { color: #f8fafc; margin-bottom: 20px; font-size: 2rem; }
+        .container-cards { display: flex; gap: 30px; flex-wrap: wrap; }
+        .card { background-color: #1e293b; border: 1px solid #334155; padding: 30px; border-radius: 12px; flex: 1; min-width: 320px; max-width: 650px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .card h3 { color: #38bdf8; margin-bottom: 20px; font-size: 1.3rem; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #cbd5e1; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; box-sizing: border-box; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #38bdf8; outline: none; }
+        .destino-group { display: flex; gap: 15px; margin-top: 8px; }
+        .destino-option { flex: 1; position: relative; }
+        .destino-option input { position: absolute; opacity: 0; cursor: pointer; }
+        .destino-label { display: block; text-align: center; padding: 14px; background: #0f172a; border: 2px solid #334155; border-radius: 8px; color: #94a3b8; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .destino-option input:checked + .destino-label { background: #0284c7; color: #fff; border-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
+        
+        .btn-primary { background: #0284c7; color: #fff; border: none; padding: 14px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; font-size: 1rem; }
+        .btn-primary:hover { background: #38bdf8; color: #0f172a; }
+        .alert { padding: 12px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; }
+        .alert-success { background: #065f46; color: #34d399; }
+        .alert-danger { background: #991b1b; color: #fca5a5; }
+        .btn-stock {
+            background: #0f172a;
+            color: #38bdf8;
+            border: 1px solid #38bdf8;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-stock:hover {
+            background: #38bdf8;
+            color: #0f172a;
+        }
+        .btn-delete {
+            background: #991b1b;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: 0.2s;
+        }
+        .btn-delete:hover {
+            background: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <!-- Menú Lateral con Restricciones de Roles y Botón de Ocultar/Ver -->
+    <aside id="sidebar">
+        <h2>IGOR POS</h2>
+        <a href="{{ url_for('admin.dashboard') }}" class="{% if seccion == 'dashboard' %}active{% endif %}">🏠 Panel Principal</a>
+        <a href="{{ url_for('admin.productos') }}" class="{% if seccion == 'productos' %}active{% endif %}">🍔 Menú y Productos</a>
+        
+        <!-- 🔒 Solo Gerentes y Administradores pueden ver la creación de personal y suscripción -->
+        {% if session.get('rol') in ['Gerente', 'Administrador', 'gerente', 'administrador', 'admin'] %}
+        <a href="{{ url_for('admin.usuarios') }}" class="{% if seccion == 'usuarios' %}active{% endif %}">👥 Crear Personal / Usuarios</a>
+        
+        <!-- 💳 Mi Suscripción / Plan (Exclusivo Gerente) -->
+        <a href="{{ url_for('admin.planes') }}" style="color: #38bdf8; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2);">💳 Mi Suscripción / Plan</a>
+        {% endif %}
+        
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 12px 0;">
+        
+        <!-- 🔒 Solo Gerentes y Administradores pueden ver la Apertura de Caja -->
+        {% if session.get('rol') in ['Gerente', 'Administrador', 'gerente', 'administrador', 'admin'] %}
+        <a href="{{ url_for('caja_mesas.apertura_caja') }}" style="background: #15803d; color: #fff;">🔑 Apertura de Caja</a>
+        {% endif %}
+        
+        <a href="{{ url_for('caja_mesas.gestionar_mesas') }}">🗺️ Mapa de Mesas / POS</a>
+        
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 12px 0;">
+        
+        <a href="{{ url_for('admin.cocina') }}">🍳 Pantalla Cocina</a>
+        <a href="{{ url_for('admin.bar') }}">🍺 Pantalla Bar</a>
+        
+        <a href="{{ url_for('auth.logout') }}" style="color: #fca5a5; margin-top: auto;">🚪 Cerrar Sesión</a>
+    </aside>
+    <main>
+        <!-- Botón superior para Ocultar / Mostrar el Menú -->
+        <button class="toggle-btn" onclick="toggleSidebar()">
+            ☰ <span>Ocultar / Ver Menú</span>
+        </button>
+        <h1>Gestión General - IGOR POS</h1>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <div class="container-cards">
+            {% if seccion == 'productos' %}
+            <div class="card">
+                <h3>🍔 Registrar Nuevo Producto</h3>
+                <form method="POST" action="{{ url_for('admin.productos') }}">
+                    <div class="form-group">
+                        <label>Nombre del Producto:</label>
+                        <input type="text" name="nombre" required placeholder="Ej: Hamburguesa Especial">
+                    </div>
+                    <div class="form-group">
+                        <label>Precio ($):</label>
+                        <input type="number" step="0.01" name="precio" required placeholder="Ej: 15000">
+                    </div>
+                    <div class="form-group">
+                        <label>Stock / Cantidad:</label>
+                        <input type="number" name="stock" value="10" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Categoría:</label>
+                        <input type="text" name="categoria" placeholder="Ej: Comidas Rápidas">
+                    </div>
+                    <div class="form-group">
+                        <label>¿A dónde se envía la comanda? (Obligatorio):</label>
+                        <div class="destino-group">
+                            <div class="destino-option">
+                                <input type="radio" id="cocina" name="destino" value="Cocina" required>
+                                <label for="cocina" class="destino-label">🍳 Cocina</label>
+                            </div>
+                            <div class="destino-option">
+                                <input type="radio" id="bar" name="destino" value="Bar" required>
+                                <label for="bar" class="destino-label">🍺 Bar</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Descripción:</label>
+                        <textarea name="descripcion" placeholder="Detalles del producto..."></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary">Guardar Producto 🚀</button>
+                </form>
+            </div>
+            <div class="card" style="max-width: 650px;">
+                <h3>📋 Productos Registrados</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 15px; text-align: left; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #334155; color: #38bdf8;">
+                            <th style="padding: 10px;">Nombre</th>
+                            <th style="padding: 10px;">Precio</th>
+                            <th style="padding: 10px;">Stock</th>
+                            <th style="padding: 10px;">Destino</th>
+                            <th style="padding: 10px; text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if productos %}
+                            {% for p in productos %}
+                            <tr style="border-bottom: 1px solid #334155;">
+                                <td style="padding: 10px;">{{ p[1] }}</td>
+                                <td style="padding: 10px;">${{ p[2] }}</td>
+                                <td style="padding: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <form action="{{ url_for('admin.modificar_stock', producto_id=p[0], accion='menos') }}" method="POST" style="display:inline;">
+                                            <button type="submit" class="btn-stock">-</button>
+                                        </form>
+                                        <span style="font-weight: bold; min-width: 20px; text-align: center;">{{ p[3] }}</span>
+                                        <form action="{{ url_for('admin.modificar_stock', producto_id=p[0], accion='mas') }}" method="POST" style="display:inline;">
+                                            <button type="submit" class="btn-stock">+</button>
+                                        </form>
+                                    </div>
+                                </td>
+                                <td style="padding: 10px;"><span style="background: #0284c7; padding: 4px 10px; border-radius: 6px; font-weight: bold;">{{ p[5] }}</span></td>
+                                <td style="padding: 10px; text-align: center;">
+                                    <form action="{{ url_for('admin.eliminar_producto', producto_id=p[0]) }}" method="POST" onsubmit="return confirm('¿Seguro que deseas eliminar este producto?');" style="display:inline;">
+                                        <button type="submit" class="btn-delete" title="Eliminar Producto">🗑️</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="5" style="padding: 20px; text-align: center; color: #94a3b8;">No hay productos guardados.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            {% elif seccion == 'usuarios' %}
+            <div class="card">
+                <h3>👤 Registrar Nuevo Usuario / Personal</h3>
+                <form method="POST" action="{{ url_for('admin.usuarios') }}">
+                    <div class="form-group">
+                        <label>Nombre Completo:</label>
+                        <input type="text" name="nombre" required placeholder="Ej: Juan Pérez">
+                    </div>
+                    <div class="form-group">
+                        <label>Correo Electrónico:</label>
+                        <input type="email" name="email" required placeholder="ejemplo@correo.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Contraseña:</label>
+                        <input type="password" name="password" required placeholder="******">
+                    </div>
+                    <div class="form-group">
+                        <label>Rol / Cargo en el Sistema:</label>
+                        <select name="rol" required>
+                            <option value="Auxiliar de Servicio">Auxiliar de Servicio (Mesero)</option>
+                            <option value="Administrador">Administrador</option>
+                            <option value="Cocinero">Cocinero</option>
+                            <option value="Bartender">Bartender</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-primary">Crear Usuario 👤</button>
+                </form>
+            </div>
+            <div class="card" style="max-width: 600px;">
+                <h3>👥 Personal de la Empresa</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 15px; text-align: left; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #334155; color: #38bdf8;">
+                            <th style="padding: 10px;">Nombre</th>
+                            <th style="padding: 10px;">Email</th>
+                            <th style="padding: 10px;">Rol</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if usuarios %}
+                            {% for u in usuarios %}
+                            <tr style="border-bottom: 1px solid #334155;">
+                                <td style="padding: 10px;">{{ u[1] }}</td>
+                                <td style="padding: 10px;">{{ u[2] }}</td>
+                                <td style="padding: 10px;"><span style="background: #22c55e; color: #000; padding: 4px 10px; border-radius: 6px; font-weight: bold;">{{ u[3] }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="3" style="padding: 20px; text-align: center; color: #94a3b8;">No hay personal registrado aún.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="card">
+                <h3>Bienvenido al Panel de Gerencia</h3>
+                <p style="color: #cbd5e1; margin-top: 10px;">Desde el menú lateral puedes administrar los productos, registrar al personal del restaurante, acceder directo a la apertura de caja, pantallas de Cocina y Bar, y controlar la operación.</p>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+    </script>
+</body>
+</html>

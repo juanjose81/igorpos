@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>NovaGest - Reportes de Ventas</title>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #334155; padding-bottom: 15px; }
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; text-align: center; }
+        h3 { color: #38bdf8; margin-top: 0; }
+        .valor { font-size: 2rem; font-weight: bold; color: #22c55e; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #1e293b; border-radius: 12px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; }
+        th { color: #38bdf8; background: #1e293b; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h2>📊 Reportes y Caja - NovaGest</h2>
+    <div>
+        <a href="/configuracion" style="color: #38bdf8; text-decoration: none; margin-right: 20px;">⚙️ Admin</a>
+        <a href="/clientes" style="color: #38bdf8; text-decoration: none; margin-right: 20px;">👥 Clientes</a>
+        <a href="/logout" style="color: #ef4444; text-decoration: none;">Cerrar Sesión</a>
+    </div>
+</div>
+<div class="stats">
+    <div class="card">
+        <h3>Ventas Totales Hoy</h3>
+        <div class="valor">${{ "{:,.0f}".format(dinero_hoy) }}</div>
+    </div>
+    <div class="card">
+        <h3>Facturas Generadas Hoy</h3>
+        <div class="valor" style="color: #38bdf8;">{{ total_facturas_hoy }}</div>
+    </div>
+</div>
+<div class="card">
+    <h3>Historial de Facturación Reciente</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>ID Factura</th>
+                <th>Mesa</th>
+                <th>Total</th>
+                <th>Método de Pago</th>
+                <th>Fecha y Hora</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in facturas %}
+            <tr>
+                <td>#{{ f[0] }}</td>
+                <td>Mesa {{ f[1] }}</td>
+                <td>${{ "{:,.0f}".format(f[2]) }}</td>
+                <td>{{ f[3] }}</td>
+                <td>{{ f[4] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

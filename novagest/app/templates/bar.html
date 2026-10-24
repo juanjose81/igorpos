@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pantalla de Bar - IGOR POS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; padding: 20px; min-height: 100vh; position: relative; }
+        
+        /* BOTÓN FLOTANTE PARA ABRIR/CERRAR EL MENÚ */
+        .btn-toggle-menu {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #0284c7;
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 2000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: 0.2s;
+        }
+        .btn-toggle-menu:hover { background: #0369a1; }
+        /* PANEL DE NAVEGACIÓN RETRÁCTIL (SIDEBAR) */
+        .menu-lateral {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100%;
+            background: #1e293b;
+            border-right: 1px solid #334155;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+            transition: left 0.3s ease-in-out;
+            z-index: 1500;
+            padding: 40px 20px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+        }
+        .menu-lateral.abierto { left: 0; }
+        .menu-lateral h3 { color: #38bdf8; margin-bottom: 5px; text-align: center; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+        .nav-btn { background: #334155; color: #38bdf8; padding: 10px 14px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.95rem; transition: 0.2s; display: block; text-align: left; }
+        .nav-btn:hover { background: #475569; color: #fff; }
+        .nav-btn.activo { background: #0284c7; color: #fff; }
+        /* CONTENEDOR PRINCIPAL */
+        .contenido-principal { margin-left: 0; transition: margin-left 0.3s ease-in-out; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 1px solid #334155; padding-bottom: 15px; padding-left: 60px; }
+        
+        .grid-comandas { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .card-comanda { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .card-header { font-size: 1.2rem; font-weight: bold; color: #38bdf8; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .card-body { font-size: 1.1rem; margin-bottom: 15px; }
+        .btn-listo { background: #0284c7; color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; width: 100%; font-size: 1rem; }
+        .btn-listo:hover { background: #0369a1; }
+        .badge { background: #d97706; padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; color: #fff; }
+        .badge-timer { background: #334155; color: #38bdf8; padding: 4px 8px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <!-- BOTÓN FLOTANTE PARA MOSTRAR/OCULTAR MENÚ -->
+    <button class="btn-toggle-menu" onclick="toggleMenu()">📂 Menú POS</button>
+    <!-- MENÚ LATERAL RETRÁCTIL CON RUTA CORREGIDA -->
+    <div class="menu-lateral" id="menuLateral">
+        <h3>IGOR POS</h3>
+        <a href="{{ url_for('admin.dashboard') }}" class="nav-btn">🏠 Panel Principal</a>
+        <a href="{{ url_for('admin.productos') }}" class="nav-btn">🍔 Menú y Productos</a>
+        <a href="{{ url_for('admin.usuarios') }}" class="nav-btn">👥 Crear Personal / Usuarios</a>
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 5px 0;">
+        <a href="{{ url_for('caja_mesas.gestionar_mesas') }}" class="nav-btn">🗺️ Mapa de Mesas / POS</a>
+        <a href="{{ url_for('admin.cocina') }}" class="nav-btn">🍳 Pantalla Cocina</a>
+        <a href="{{ url_for('admin.bar') }}" class="nav-btn activo">🍻 Pantalla Bar</a>
+        <button onclick="toggleMenu()" style="margin-top: 10px; background: #ef4444; color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer;">❌ Cerrar Menú</button>
+    </div>
+    <div class="contenido-principal">
+        <div class="header">
+            <h2>🍻 KDS - Pantalla de Bar</h2>
+        </div>
+        <div class="grid-comandas">
+            {% if pedidos %}
+                {% for p in pedidos %}
+                <div class="card-comanda">
+                    <div>
+                        <div class="card-header">
+                            <span>🍻 {{ p.mesa | capitalize }}</span>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <span class="badge-timer temporizador-comanda" data-fecha="{{ p.fecha_comandado }}">
+                                    ⏱️ <span class="tiempo-transcurrido">00:00</span>
+                                </span>
+                                <span class="badge">{{ p.estado }}</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>{{ p.cantidad }}x</strong> {{ p.producto }}</p>
+                        </div>
+                    </div>
+                    <form action="{{ url_for('restaurante.marcar_entregado', id_pedido=p.id) }}" method="POST">
+                        <button type="submit" class="btn-listo">✅ Servido / Listo</button>
+                    </form>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="grid-column: 1/-1; text-align: center; color: #94a3b8; font-size: 1.2rem; margin-top: 50px;">No hay pedidos pendientes en el bar por ahora. 🍹</p>
+            {% endif %}
+        </div>
+    </div>
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById('menuLateral');
+            menu.classList.toggle('abierto');
+        }
+
+        function actualizarTemporizadores() {
+            const elementos = document.querySelectorAll('.temporizador-comanda');
+            
+            elementos.forEach(el => {
+                const fechaStr = el.getAttribute('data-fecha');
+                if (!fechaStr) return;
+
+                const fechaComanda = new Date(fechaStr);
+                const ahora = new Date();
+                
+                let diffSegundos = Math.floor((ahora - fechaComanda) / 1000);
+                if (diffSegundos < 0) diffSegundos = 0;
+
+                const minutos = Math.floor(diffSegundos / 60);
+                const segundos = diffSegundos % 60;
+
+                const minStr = String(minutos).padStart(2, '0');
+                const segStr = String(segundos).padStart(2, '0');
+
+                const spanTiempo = el.querySelector('.tiempo-transcurrido');
+                if (spanTiempo) {
+                    spanTiempo.textContent = `${minStr}:${segStr}`;
+                }
+
+                if (minutos >= 15) {
+                    el.style.backgroundColor = '#dc2626';
+                    el.style.color = '#fff';
+                } else if (minutos >= 8) {
+                    el.style.backgroundColor = '#d97706';
+                    el.style.color = '#fff';
+                } else {
+                    el.style.backgroundColor = '#334155';
+                    el.style.color = '#38bdf8';
+                }
+            });
+        }
+
+        setInterval(actualizarTemporizadores, 1000);
+        actualizarTemporizadores();
+    </script>
+</body>
+</html>

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión y Control de Caja - IGOR POS</title>
+    <!-- Bootstrap CSS y FontAwesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js para las gráficas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        main {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+        .main-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            background: #ffffff;
+            margin-bottom: 25px;
+        }
+        .stat-card {
+            border-radius: 10px;
+            padding: 18px;
+            color: #fff;
+        }
+        .bg-gradient-blue { background: linear-gradient(135deg, #2b5876, #4e4376); }
+        .bg-gradient-green { background: linear-gradient(135deg, #11998e, #38ef7d); }
+        .bg-gradient-orange { background: linear-gradient(135deg, #fc4a1a, #f7b733); }
+        .chart-box {
+            position: relative;
+            max-width: 320px;
+            margin: 0 auto;
+        }
+        .table-custom th {
+            background-color: #2c3e50;
+            color: white;
+            font-weight: 600;
+        }
+        .toggle-btn {
+            background: #1e293b;
+            color: #38bdf8;
+            border: 1px solid #334155;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        .toggle-btn:hover { background: #334155; color: #fff; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. SE INCLUYE EL MENÚ LATERAL SEGURO -->
+    {% include 'sidebar.html' %}
+
+    <!-- 2. CONTENIDO PRINCIPAL DE LA VISTA -->
+    <main>
+        <button class="toggle-btn" onclick="toggleSidebar()">
+            ☰ <span>Ocultar / Ver Menú</span>
+        </button>
+
+        <div class="container-fluid py-2">
+
+            <!-- SECCIÓN DE MENSAJES FLASH (ALERTAS DE MESAS ACTIVAS O RESETEO) -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% set alert_class = 'alert-danger' if category == 'danger' else 'alert-success' %}
+                        <div class="alert {{ alert_class }} alert-dismissible fade show shadow-sm fw-bold mb-4" role="alert">
+                            <i class="fa-solid fa-triangle-exclamation me-2 fs-5"></i> {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Encabezado -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold mb-0"><i class="fa-solid fa-cash-register me-2 text-primary"></i>Gestión y Apertura de Caja</h2>
+                    <p class="text-muted mb-0">Control de flujo de caja, turno actual y rendimiento de meseros — <strong>IGOR POS</strong></p>
+                </div>
+                <div>
+                    {% if caja_abierta %}
+                        <a href="{{ url_for('caja_mesas.gestionar_mesas') }}" class="btn btn-outline-secondary fw-semibold">
+                            <i class="fa-solid fa-utensils me-1"></i> Ir a Mesas
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- ESTADO DE LA CAJA ACTUAL -->
+            {% if caja_abierta %}
+                <div class="card main-card border-start border-4 border-success p-4" 
+                     id="datosCaja" 
+                     data-inicial="{{ caja_abierta.monto_inicial }}" 
+                     data-ventas="{{ caja_abierta.ventas_del_turno }}">
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-success fs-6 px-3 py-2"><i class="fa-solid fa-circle-check me-1"></i> CAJA ABIERTA (Turno #{{ caja_abierta.id }})</span>
+                        <span class="text-muted"><i class="fa-regular fa-clock me-1"></i> Abierta desde: {{ caja_abierta.fecha_apertura }}</span>
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="stat-card bg-gradient-blue">
+                                <small class="text-white-50 text-uppercase fw-bold">Monto Inicial</small>
+                                <h3 class="fw-bold mb-0">${{ "{:,.2f}".format(caja_abierta.monto_inicial) }}</h3>
+                                <small><i class="fa-solid fa-user me-1"></i> {{ caja_abierta.usuario_apertura }}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card bg-gradient-green">
+                                <small class="text-white-50 text-uppercase fw-bold">Ventas en este Turno</small>
+                                <h3 class="fw-bold mb-0">${{ "{:,.2f}".format(caja_abierta.ventas_del_turno) }}</h3>
+                                <small><i class="fa-solid fa-chart-line me-1"></i> Calculado en tiempo real</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card bg-gradient-orange">
+                                <small class="text-white-50 text-uppercase fw-bold">Total Estimado en Caja</small>
+                                <h3 class="fw-bold mb-0">${{ "{:,.2f}".format(caja_abierta.monto_total_estimado) }}</h3>
+                                <small><i class="fa-solid fa-vault me-1"></i> Inicial + Ventas</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row align-items-center mb-4">
+                        <!-- Gráfica de distribución de dinero -->
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <div class="chart-box">
+                                <canvas id="graficaCajaEnVivo"></canvas>
+                            </div>
+                        </div>
+                        <!-- Botón para Cierre de Caja -->
+                        <div class="col-md-6 text-center text-md-end">
+                            <div class="p-3 bg-light rounded-3">
+                                <h5 class="fw-bold mb-2 text-dark">¿Finalizar el Turno?</h5>
+                                <p class="text-muted small mb-3">Al cerrar la caja se consolidarán las ventas registradas hasta este momento y la caja quedará disponible para una nueva apertura.</p>
+                                <form method="POST" onsubmit="return confirm('¿Estás seguro de que deseas cerrar la caja del turno actual?');">
+                                    <input type="hidden" name="accion" value="cerrar">
+                                    <input type="hidden" name="id_caja" value="{{ caja_abierta.id }}">
+                                    <button type="submit" class="btn btn-danger btn-lg fw-bold px-4">
+                                        <i class="fa-solid fa-lock me-2"></i> Cerrar Caja Ahora
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- TABLA DE RENDIMIENTO DEL PERSONAL/MESEROS -->
+                    <hr class="my-4">
+                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-users-viewfinder me-2 text-primary"></i>Rendimiento y Ventas por Personal (Turno Actual)</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Mesero / Empleado</th>
+                                    <th class="text-center">Mesas / Pedidos Atendidos</th>
+                                    <th class="text-end">Total Vendido ($)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if rendimiento_personal %}
+                                    {% for r in rendimiento_personal %}
+                                    <tr>
+                                        <td><i class="fa-solid fa-user-tie me-2 text-secondary"></i><strong>{{ r.empleado }}</strong></td>
+                                        <td class="text-center"><span class="badge bg-info text-dark fs-6">{{ r.mesas_atendidas }} mesas</span></td>
+                                        <td class="text-end text-success fw-bold fs-6">${{ "{:,.2f}".format(r.total_vendido) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted py-3">Aún no se han cobrado ventas en este turno.</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <script>
+                    document.addEventListener("DOMContentLoaded", function() {
+                        const elem = document.getElementById('datosCaja');
+                        if (elem) {
+                            const montoInicial = parseFloat(elem.getAttribute('data-inicial')) || 0;
+                            const ventasTurno = parseFloat(elem.getAttribute('data-ventas')) || 0;
+                            const ctx = document.getElementById('graficaCajaEnVivo').getContext('2d');
+                            new Chart(ctx, {
+                                type: 'doughnut',
+                                data: {
+                                    labels: ['Monto Inicial', 'Ventas del Turno'],
+                                    datasets: [{
+                                        data: [montoInicial, ventasTurno],
+                                        backgroundColor: ['#2b5876', '#38ef7d'],
+                                        borderWidth: 2
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    plugins: {
+                                        legend: { position: 'bottom' },
+                                        title: { display: true, text: 'Balance General del Turno' }
+                                    }
+                                }
+                            });
+                        }
+                    });
+                </script>
+            {% else %}
+                <!-- FORMULARIO DE APERTURA DE CAJA -->
+                <div class="card main-card p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-7">
+                            <span class="badge bg-danger fs-6 px-3 py-2 mb-3"><i class="fa-solid fa-lock me-1"></i> CAJA CERRADA</span>
+                            <h3 class="fw-bold">Apertura de Nuevo Turno de Caja</h3>
+                            <p class="text-muted">Ingresa el monto de base/sencillo disponible en el cajón de dinero para iniciar la jornada laboral.</p>
+                            
+                            <form method="POST" class="mt-4">
+                                <input type="hidden" name="accion" value="abrir">
+                                <div class="mb-3" style="max-width: 350px;">
+                                    <label class="form-label fw-bold">Monto Base Inicial ($):</label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" step="0.01" min="0" name="monto_inicial" value="0.00" class="form-control" required autofocus>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-success btn-lg fw-bold px-4">
+                                    <i class="fa-solid fa-key me-2"></i> Abrir Caja
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-md-5 text-center mt-4 mt-md-0">
+                            <img src="https://cdn-icons-png.flaticon.com/512/2830/2830284.png" alt="Caja Registradora" style="max-width: 200px; opacity: 0.8;">
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- SECCIÓN DE MANTENIMIENTO Y RESESEO POR FECHAS (EXCLUSIVO GERENTE) -->
+            <div class="card main-card border-start border-4 border-danger p-4">
+                <h5 class="fw-bold text-danger mb-3"><i class="fa-solid fa-triangle-exclamation me-2"></i>Mantenimiento y Reseteo del Sistema</h5>
+                <p class="text-muted small">Herramienta de emergencia para liberar mesas colgadas, purgar pedidos huérfanos o limpiar el historial de ventas por fechas.</p>
+                
+                <form action="{{ url_for('caja_mesas.reset_emergencia') }}" method="POST" onsubmit="return confirm('⚠️ ¿Estás seguro de ejecutar esta acción de mantenimiento?');">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Tipo de Limpieza</label>
+                            <select name="tipo_reseteo" class="form-select form-select-sm" onchange="toggleFechas(this.value)">
+                                <option value="todo">Purgar Todo (Reset General)</option>
+                                <option value="rango">Borrar por Rango de Fechas</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 campo-fecha" style="display: none;">
+                            <label class="form-label fw-bold small">Fecha Inicio</label>
+                            <input type="date" name="fecha_inicio" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3 campo-fecha" style="display: none;">
+                            <label class="form-label fw-bold small">Fecha Fin</label>
+                            <input type="date" name="fecha_fin" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-outline-danger btn-sm w-100 fw-bold py-2">
+                                <i class="fa-solid fa-power-off me-1"></i> Ejecutar Mantenimiento
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- HISTORIAL DE CAJAS CERRADAS RECIENTES -->
+            <div class="card main-card p-4">
+                <h4 class="fw-bold mb-3"><i class="fa-solid fa-history me-2 text-secondary"></i>Historial de Cierres Recientes</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle table-custom">
+                        <thead>
+                            <tr>
+                                <th># ID</th>
+                                <th>Apertura</th>
+                                <th>Cierre</th>
+                                <th>Monto Inicial</th>
+                                <th>Total Ventas</th>
+                                <th>Monto Final</th>
+                                <th>Usuario Cierre</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if historial_cajas %}
+                                {% for h in historial_cajas %}
+                                <tr>
+                                    <td><strong>#{{ h[0] }}</strong></td>
+                                    <td><small>{{ h[4].strftime('%Y-%m-%d %H:%M') if h[4] else '-' }}</small></td>
+                                    <td><small>{{ h[5].strftime('%Y-%m-%d %H:%M') if h[5] else '-' }}</small></td>
+                                    <td>${{ "{:,.2f}".format(h[1]) }}</td>
+                                    <td class="text-success fw-bold">+${{ "{:,.2f}".format(h[2]) }}</td>
+                                    <td class="fw-bold">${{ "{:,.2f}".format(h[3]) }}</td>
+                                    <td><span class="badge bg-secondary">{{ h[7] or h[6] or 'Sistema' }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
+                                        No hay cierres de caja registrados anteriormente.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    function toggleFechas(val) {
+        const campos = document.querySelectorAll('.campo-fecha');
+        campos.forEach(c => c.style.display = (val === 'rango') ? 'block' : 'none');
+    }
+    </script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Administración de Usuarios y Conectados - IGOR POS</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #0b132b; color: white; padding: 20px; }
+        .grid-container { display: flex; gap: 20px; flex-wrap: wrap; }
+        .card { background-color: #1c2541; padding: 20px; border-radius: 10px; flex: 1; min-width: 320px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        input, select { width: 100%; padding: 10px; margin: 5px 0 15px 0; border-radius: 5px; border: 1px solid #48cae4; background: #0b132b; color: white; box-sizing: border-box; }
+        button { background-color: #00b4d8; color: white; border: none; padding: 10px; border-radius: 5px; font-weight: bold; width: 100%; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; border-bottom: 1px solid #3a506b; text-align: left; }
+        th { color: #4ea8de; }
+        .badge-online { background-color: #2a9d8f; color: white; padding: 4px 8px; border-radius: 10px; font-size: 0.85em; font-weight: bold; }
+        .badge-offline { background-color: #e63946; color: white; padding: 4px 8px; border-radius: 10px; font-size: 0.85em; font-weight: bold; }
+        .btn-volver { background-color: #3a506b; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-bottom: 20px; }
+    </style>
+    <script>
+        function togglePinInput() {
+            var rol = document.getElementById("rolSelect").value;
+            var pinContainer = document.getElementById("pinContainer");
+            pinContainer.style.display = (rol === "Gerente") ? "block" : "none";
+        }
+    </script>
+</head>
+<body>
+
+    <a href="{{ url_for('caja_mesas.gestionar_mesas') }}" class="btn-volver">⬅️ Volver a Mesas</a>
+
+    <h1>👥 Control Total de Usuarios y Monitor de Conexiones (Solo Gerente)</h1>
+
+    <div class="grid-container">
+        <!-- Registro Infinito de Usuarios -->
+        <div class="card">
+            <h2>➕ Registrar Nuevo Personal</h2>
+            <form method="POST">
+                <label>Nombre Completo del Trabajador:</label>
+                <input type="text" name="nombre" placeholder="Ej: Carlos Pérez" required>
+
+                <label>Usuario (para Login):</label>
+                <input type="text" name="usuario" placeholder="Ej: cperez" required>
+
+                <label>Contraseña Acceso:</label>
+                <input type="password" name="password" required>
+
+                <label>Rol Asignado:</label>
+                <select id="rolSelect" name="rol" onchange="togglePinInput()" required>
+                    <option value="Auxiliar">Auxiliar de Servicio (Mesero)</option>
+                    <option value="Gerente">Gerente / Administrador</option>
+                    <option value="Cajero">Cajero Principal</option>
+                    <option value="Cocina">Cocina / Bar</option>
+                </select>
+
+                <div id="pinContainer" style="display: none;">
+                    <label style="color: #e63946;">🔒 PIN Único de Autorización (Gerente):</label>
+                    <input type="password" name="pin" placeholder="Ej: 1234">
+                </div>
+
+                <button type="submit">Guardar y Habilitar en Sistema 🚀</button>
+            </form>
+        </div>
+
+        <!-- Módulo Cambio PIN -->
+        <div class="card" style="border: 2px solid #e63946;">
+            <h2 style="color: #e63946;">🔑 Cambiar PIN de Gerente</h2>
+            <form action="{{ url_for('caja_mesas.cambiar_pin_gerente') }}" method="POST">
+                <label>Usuario Gerente:</label>
+                <input type="text" name="usuario_gerente" required>
+
+                <label>Contraseña Gerente:</label>
+                <input type="password" name="password_gerente" required>
+
+                <label>Nuevo PIN:</label>
+                <input type="password" name="nuevo_pin" required>
+
+                <button type="submit" style="background-color: #e63946;">Actualizar PIN 🔒</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Monitor de Usuarios Registrados y Conectados -->
+    <div class="card" style="margin-top: 20px;">
+        <h2>📡 Monitor de Usuarios y Estado en Tiempo Real</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Usuario (Login)</th>
+                    <th>Rol</th>
+                    <th>Estado Conexión</th>
+                    <th>Último Ingreso</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in usuarios %}
+                    <tr>
+                        <td>{{ u.id }}</td>
+                        <td><strong>{{ u.nombre }}</strong></td>
+                        <td>{{ u.usuario }}</td>
+                        <td>{{ u.rol }}</td>
+                        <td>
+                            {% if u.estado_conexion == 'Online' %}
+                                <span class="badge-online">🟢 Conectado (Online)</span>
+                            {% else %}
+                                <span class="badge-offline">🔴 Desconectado (Offline)</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ u.ultima_conexion }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>

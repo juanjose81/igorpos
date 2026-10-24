@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Igorpos - Menú Principal</title>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 40px; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { color: #38bdf8; margin: 0; font-size: 2.8rem; }
+        .header p { color: #94a3b8; font-size: 1.1rem; }
+        
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto; }
+        
+        .menu-card { background: #1e293b; border: 1px solid #334155; padding: 30px; border-radius: 12px; text-align: center; text-decoration: none; color: white; transition: all 0.3s ease; }
+        .menu-card:hover { transform: translateY(-5px); border-color: #38bdf8; background: #273548; box-shadow: 0 10px 20px rgba(56, 189, 248, 0.15); }
+        .menu-card h3 { margin: 15px 0 10px 0; color: #38bdf8; font-size: 1.3rem; }
+        .menu-card p { color: #94a3b8; font-size: 0.9rem; margin: 0; }
+        .icon { font-size: 2.8rem; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>⚡ Igorpos</h1>
+    <p>Sistema Integral de Gestión y POS para Restaurantes</p>
+</div>
+
+<div class="menu-grid">
+    <a href="/mesas" class="menu-card">
+        <div class="icon">🍽️</div>
+        <h3>Mesas y POS</h3>
+        <p>Administra el salón, toma pedidos y cobra en tiempo real.</p>
+    </a>
+
+    <a href="/clientes" class="menu-card">
+        <div class="icon">👥</div>
+        <h3>Clientes</h3>
+        <p>Gestiona la base de datos de clientes y registros rápidos.</p>
+    </a>
+
+    <a href="/reportes" class="menu-card">
+        <div class="icon">📊</div>
+        <h3>Reportes</h3>
+        <p>Consulta ventas totales, estadísticas y métodos de pago.</p>
+    </a>
+
+    <a href="/configuracion" class="menu-card">
+        <div class="icon">⚙️</div>
+        <h3>Configuración</h3>
+        <p>Administra inventario de productos y distribución del salón.</p>
+    </a>
+</div>
+
+</body>
+</html>

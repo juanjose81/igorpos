@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Historial de Ventas - IGOR POS</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #0b132b; color: #ffffff; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .card { background-color: #1c2541; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #3a506b; font-size: 0.95em; }
+        th { color: #4ea8de; }
+        .btn-volver { background-color: #3a506b; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>📊 Historial de Ventas y Facturación</h1>
+        <a href="{{ url_for('caja_mesas.gestionar_mesas') }}" class="btn-volver">⬅️ Volver a Mesas</a>
+    </div>
+
+    <div class="card">
+        <h3>📋 Registro de Transacciones Exitosas</h3>
+        {% if ventas %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Mesa</th>
+                        <th>Total Venta</th>
+                        <th>Tipo Pago</th>
+                        <th>Recibido</th>
+                        <th>Devueltas</th>
+                        <th>Atendido Por</th>
+                        <th>Fecha y Hora</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in ventas %}
+                        <tr>
+                            <td>{{ v[0] }}</td>
+                            <td><strong>{{ v[1] }}</strong></td>
+                            <td style="color: #4ea8de;">${{ "%.2f"|format(v[2]) }}</td>
+                            <td>{{ v[3] }}</td>
+                            <td>${{ "%.2f"|format(v[3] == 'Efectivo' and v[4] or v[2]) }}</td>
+                            <td style="color: #2a9d8f;">${{ "%.2f"|format(v[5]) }}</td>
+                            <td>{{ v[6] }}</td>
+                            <td>{{ v[7] }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="color: #8d99ae;">No hay ventas registradas en el historial todavía.</p>
+        {% endif %}
+    </div>
+
+</body>
+</html>

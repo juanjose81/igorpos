@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Restringido - IGOR POS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card-restricted {
+            max-width: 450px;
+            width: 90%;
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            background: #ffffff;
+        }
+        .icon-box {
+            width: 80px;
+            height: 80px;
+            background-color: #fff3cd;
+            color: #ffc107;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card card-restricted text-center p-4">
+    <div class="card-body">
+        <div class="icon-box">
+            <i class="fa-solid fa-shield-halved fa-3x text-warning"></i>
+        </div>
+        <h3 class="fw-bold text-dark mb-2">Acceso Restringido</h3>
+        <p class="text-muted mb-4">
+            Esta sección es de uso exclusivo para el <strong>Gerente</strong> y los <strong>Administradores</strong> del sistema.
+        </p>
+        <div class="d-grid">
+            <a href="{{ url_for('caja_mesas.gestionar_mesas') }}" class="btn btn-primary btn-lg fw-bold">
+                <i class="fa-solid fa-utensils me-2"></i> Volver al Panel de Mesas
+            </a>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

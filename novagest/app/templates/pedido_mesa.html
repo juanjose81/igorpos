@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pedido Mesa {{ mesa.numero_mesa }} - IGOR POS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .card-dark {
+      background-color: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+    }
+    .badge-estado-pendiente { background-color: #f59e0b; color: #000; }
+    .badge-estado-comandado { background-color: #3b82f6; color: #fff; }
+    .badge-estado-listo { background-color: #10b981; color: #fff; }
+    .badge-estado-entregado { background-color: #64748b; color: #fff; }
+    .btn-cat-prod {
+      background-color: #334155;
+      color: #fff;
+      border: 1px solid #475569;
+      text-align: left;
+      transition: all 0.2s ease;
+    }
+    .btn-cat-prod:hover {
+      background-color: #0284c7;
+      color: #fff;
+      border-color: #38bdf8;
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+<div class="container-fluid py-4 px-3 px-md-5">
+  <!-- Encabezado / Barra Superior -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h2 class="fw-bold m-0 text-white"><i class="bi bi-shop"></i> {{ mesa.numero_mesa }}</h2>
+      <span class="badge bg-primary fs-6 mt-1">Atiende: {{ mesa.mesero_atendiendo }}</span>
+      <span class="badge bg-success fs-6 mt-1 ms-1">Estado: {{ mesa.estado }}</span>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <!-- 🧹 BOTÓN VACIAR / LIMPIAR MESA -->
+      <form action="{{ url_for('caja_mesas.vaciar_mesa', id_mesa=mesa.id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de vaciar y limpiar toda la mesa? Se borrarán todos los productos pedidos sin registrar en caja.');">
+        <button type="submit" class="btn btn-warning btn-sm fw-bold">
+          <i class="bi bi-trash3-fill"></i> Vaciar Mesa
+        </button>
+      </form>
+
+      <form action="{{ url_for('caja_mesas.cambiar_mesa', id_mesa_origen=mesa.id) }}" method="POST" class="d-flex align-items-center gap-1">
+        <select name="id_mesa_destino" class="form-select form-select-sm bg-dark text-white border-secondary">
+          <option value="">Mover pedido a...</option>
+          {% for m in todas_las_mesas %}
+            {% if m[0] != mesa.id %}
+              <option value="{{ m[0] }}">{{ m[1] }} ({{ m[2] }})</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-outline-warning btn-sm fw-bold">Mover</button>
+      </form>
+      <a href="{{ url_for('caja_mesas.gestionar_mesas') }}" class="btn btn-outline-light btn-sm fw-bold">
+        <i class="bi bi-arrow-left"></i> Volver a Mesas
+      </a>
+    </div>
+  </div>
+  <div class="row g-4">
+    <!-- Columna Izquierda: Catálogo de Productos con Buscador Instantáneo -->
+    <div class="col-lg-6">
+      <div class="card card-dark p-3 h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <h4 class="fw-bold m-0 text-info"><i class="bi bi-grid-fill"></i> Catálogo de Productos</h4>
+        </div>
+        <!-- BARRA DE BÚSQUEDA INSTANTÁNEA -->
+        <div class="mb-3">
+          <div class="input-group">
+            <span class="input-group-text bg-dark border-secondary text-info"><i class="bi bi-search"></i></span>
+            <input type="text" id="buscadorProductos" class="form-control bg-dark text-white border-secondary" placeholder="Buscar plato, bebida..." onkeyup="filtrarProductos()">
+          </div>
+        </div>
+        
+        {% if not catalogo %}
+          <div class="alert alert-warning text-dark text-center my-auto">
+            <i class="bi bi-exclamation-triangle-fill fs-3 d-block mb-2"></i>
+            <strong>No hay productos detectados en el catálogo.</strong><br>
+            Registra productos desde el módulo del gerente para que aparezcan aquí.
+          </div>
+        {% else %}
+          <div class="row g-2 overflow-auto" style="max-height: 530px;" id="contenedorCatalogo">
+            {% for prod in catalogo %}
+              <div class="col-6 col-md-4 item-producto" data-nombre="{{ prod.nombre | lower }}">
+                <form action="{{ url_for('caja_mesas.abrir_pedido', id_mesa=mesa.id) }}" method="POST">
+                  <input type="hidden" name="producto_id" value="{{ prod.id }}">
+                  <input type="hidden" name="cantidad" value="1">
+                  <button type="submit" name="agregar_producto" class="btn btn-cat-prod w-100 p-3 rounded-3 h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      <div class="fw-bold text-truncate">{{ prod.nombre }}</div>
+                      <small class="text-info d-block">{{ prod.destino }}</small>
+                    </div>
+                    <div class="fw-bold fs-5 text-warning mt-2">${{ "{:,.2f}".format(prod.precio) }}</div>
+                  </button>
+                </form>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    <!-- Columna Derecha: Consumo Actual -->
+    <div class="col-lg-6">
+      <div class="card card-dark p-3 h-100 d-flex flex-column justify-content-between">
+        <div>
+          <h4 class="fw-bold mb-3 text-success"><i class="bi bi-cart-check-fill"></i> Consumo Actual</h4>
+          
+          <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th class="text-center">Cant</th>
+                  <th class="text-end">Subtotal</th>
+                  <th class="text-center">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if not pedidos %}
+                  <tr>
+                    <td colspan="4" class="text-center text-muted py-4">No hay productos consumidos en esta mesa.</td>
+                  </tr>
+                {% else %}
+                  {% for item in pedidos %}
+                    <tr>
+                      <td>
+                        <span class="fw-semibold">{{ item.producto }}</span>
+                        <br>
+                        <small class="badge 
+                          {% if item.estado == 'Pendiente' %}badge-estado-pendiente
+                          {% elif item.estado == 'Comandado' %}badge-estado-comandado
+                          {% elif item.estado == 'Listo' %}badge-estado-listo
+                          {% else %}badge-estado-entregado{% endif %}">
+                          {{ item.estado }} ({{ item.destino }})
+                        </small>
+                      </td>
+                      <td class="text-center">
+                        <!-- BOTONES + y - SIEMPRE DISPONIBLES PARA EL MESERO -->
+                        <div class="btn-group btn-group-sm">
+                          <form action="{{ url_for('caja_mesas.disminuir_cantidad', id_item=item.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">-</button>
+                          </form>
+                          <span class="btn btn-dark btn-sm disabled fw-bold text-white">{{ item.cantidad }}</span>
+                          <form action="{{ url_for('caja_mesas.aumentar_cantidad', id_item=item.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">+</button>
+                          </form>
+                        </div>
+                      </td>
+                      <td class="text-end fw-bold text-warning">${{ "{:,.2f}".format(item.subtotal) }}</td>
+                      <td class="text-center">
+                        <!-- BOTÓN ELIMINAR SIEMPRE DISPONIBLE PARA CORRECCIONES -->
+                        <form action="{{ url_for('caja_mesas.eliminar_item', id_item=item.id) }}" method="POST">
+                          <button type="submit" class="btn btn-outline-danger btn-sm" title="Eliminar / Corregir"><i class="bi bi-trash"></i></button>
+                        </form>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="border-top border-secondary pt-3 mt-3">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="fs-4 fw-bold">TOTAL:</span>
+            <span class="fs-3 fw-bold text-success">${{ "{:,.2f}".format(total) }}</span>
+          </div>
+          <div class="d-grid gap-2">
+            <!-- BOTÓN GUARDAR / ACTUALIZAR VISTA -->
+            <a href="{{ url_for('caja_mesas.abrir_pedido', id_mesa=mesa.id) }}" class="btn btn-secondary btn-sm fw-bold">
+              <i class="bi bi-arrow-clockwise"></i> Guardar / Actualizar Vista
+            </a>
+            <!-- BOTÓN ENVIAR COMANDA A COCINA / BAR -->
+            {% if hay_pendientes %}
+              <form action="{{ url_for('caja_mesas.abrir_pedido', id_mesa=mesa.id) }}" method="POST">
+                <button type="submit" name="enviar_comanda" class="btn btn-primary btn-lg w-100 fw-bold">
+                  <i class="bi bi-send-fill"></i> Enviar Comanda a Cocina / Bar
+                </button>
+              </form>
+            {% endif %}
+            
+            <!-- 🔒 RESTRICCIÓN VISUAL: Solo Gerentes y Administradores ven el botón de cobrar -->
+            {% if total > 0 %}
+              {% set rol_actual = session.get('rol', '') | lower %}
+              {% if rol_actual in ['gerente', 'administrador', 'admin'] %}
+              <button type="button" class="btn btn-success btn-lg w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#modalCobrar">
+                <i class="bi bi-cash-stack"></i> Cobrar / Facturar Mesa
+              </button>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Modal de Cobro y Facturación -->
+<div class="modal fade" id="modalCobrar" tabindex="-1" aria-labelledby="modalCobrarLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-dark shadow-lg border-0 rounded-4">
+      <div class="modal-header bg-success text-white rounded-top-4">
+        <h5 class="modal-title fw-bold" id="modalCobrarLabel">
+          <i class="bi bi-calculator"></i> Cobrar Mesa: {{ mesa.numero_mesa }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <form action="{{ url_for('caja_mesas.cerrar_facturar_mesa', id_mesa=mesa.id) }}" method="POST">
+        <div class="modal-body p-4">
+          <div class="text-center mb-4 p-3 bg-light rounded-3 border">
+            <span class="text-muted d-block small fw-bold text-uppercase">Total a Pagar</span>
+            <h2 class="text-success fw-bold m-0" id="montoTotalPagarDisplay">${{ "{:,.2f}".format(total) }}</h2>
+            <input type="hidden" id="inputTotalVenta" value="{{ total }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo de Pago</label>
+            <select name="tipo_pago" id="selectTipoPago" class="form-select form-select-lg">
+              <option value="Efectivo" selected>Efectivo</option>
+              <option value="Nequi / Transferencia">Nequi / Transferencia</option>
+              <option value="Tarjeta débito/crédito">Tarjeta débito/crédito</option>
+            </select>
+          </div>
+          <div id="seccionEfectivo" class="row g-2 mb-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Efectivo Recibido ($)</label>
+              <input type="number" step="0.01" min="0" name="efectivo_recibido" id="inputEfectivoRecibido" 
+                     class="form-control form-control-lg" value="{{ total }}" placeholder="Ej: 20000" oninput="calcularVueltos()">
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Cambio / Vueltos ($)</label>
+              <input type="text" id="inputVueltosDisplay" class="form-control form-control-lg bg-light text-primary fw-bold" value="$0.00" readonly>
+            </div>
+          </div>
+          <div class="p-3 bg-light rounded-3 border mb-3">
+            <div class="form-check form-switch mb-2 ps-5">
+              <input class="form-check-input ms--4" type="checkbox" name="desea_factura_impresa" value="si" id="checkFacturaImpresa" checked>
+              <label class="form-check-label fw-semibold" for="checkFacturaImpresa">
+                🖨️ Generar Factura en PDF / Imprimir
+              </label>
+            </div>
+            <div class="form-check form-switch ps-5">
+              <input class="form-check-input ms--4" type="checkbox" name="es_electronica" value="si" id="checkFacturaWA" onchange="toggleDatosCliente()">
+              <label class="form-check-label fw-semibold" for="checkFacturaWA">
+                📲 Enviar Recibo por WhatsApp Web
+              </label>
+            </div>
+          </div>
+          <div id="seccionDatosCliente" style="display: none;" class="p-3 bg-light rounded-3 border mb-3">
+            <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-person-lines-fill"></i> Datos del Cliente</h6>
+            <div class="mb-2">
+              <input type="text" name="cliente_nombre" class="form-control" placeholder="Nombre del cliente">
+            </div>
+            <div class="mb-0">
+              <input type="text" name="cliente_telefono" class="form-control" placeholder="Número de WhatsApp (Ej: 3001234567)">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 p-3 bg-light rounded-bottom-4">
+          <button type="button" class="btn btn-secondary px-4 rounded-3" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success px-4 rounded-3 fw-bold">
+            <i class="bi bi-check-circle-fill"></i> Confirmar Pago y Facturar 🚀
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Filtrado de productos en tiempo real por nombre
+function filtrarProductos() {
+  const filtro = document.getElementById('buscadorProductos').value.toLowerCase();
+  const items = document.querySelectorAll('.item-producto');
+  
+  items.forEach(item => {
+    const nombre = item.getAttribute('data-nombre');
+    if (nombre.includes(filtro)) {
+      item.style.display = '';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+function calcularVueltos() {
+  const total = parseFloat(document.getElementById('inputTotalVenta').value) || 0;
+  const recibido = parseFloat(document.getElementById('inputEfectivoRecibido').value) || 0;
+  const vueltos = Math.max(0, recibido - total);
+  
+  document.getElementById('inputVueltosDisplay').value = new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 2
+  }).format(vueltos);
+}
+function toggleDatosCliente() {
+  const check = document.getElementById('checkFacturaWA');
+  const seccion = document.getElementById('seccionDatosCliente');
+  seccion.style.display = check.checked ? 'block' : 'none';
+}
+document.addEventListener('DOMContentLoaded', function() {
+  calcularVueltos();
+});
+</script>
+</body>
+</html>

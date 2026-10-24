@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Mesas - IGOR POS</title>
+    <!-- Bootstrap CSS y FontAwesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        /* Estilos del Menú Lateral */
+        aside { 
+            width: 260px; 
+            background-color: #1e293b; 
+            border-right: 1px solid #334155; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 20px; 
+            transition: transform 0.3s ease;
+            z-index: 100;
+            min-height: 100vh;
+            flex-shrink: 0;
+        }
+        aside.collapsed { transform: translateX(-100%); position: absolute; height: 100%; }
+        aside h2 { color: #38bdf8; font-size: 1.5rem; margin-bottom: 25px; text-align: center; }
+        aside a { color: #94a3b8; text-decoration: none; padding: 10px 15px; border-radius: 8px; margin-bottom: 6px; font-weight: 500; transition: 0.2s; display: block; font-size: 0.95rem; }
+        aside a:hover, aside a.active { background-color: #0284c7; color: #fff; }
+        main {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            background-color: #f4f6f9;
+            color: #1e293b;
+        }
+        .main-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            background: #ffffff;
+            margin-bottom: 25px;
+        }
+        .toggle-btn {
+            background: #1e293b;
+            color: #38bdf8;
+            border: 1px solid #334155;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        .toggle-btn:hover { background: #334155; color: #fff; }
+        
+        .mesa-card {
+            border-radius: 12px;
+            transition: 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            background: #ffffff;
+        }
+        .mesa-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- MENÚ LATERAL INTEGRADO CON RESTRICCIONES DE ROLES -->
+    <aside id="sidebar">
+        <h2>IGOR POS</h2>
+        <a href="{{ url_for('admin.dashboard') }}">🏠 Panel Principal</a>
+        
+        {% set rol_actual = session.get('rol', '') | lower %}
+        {% if rol_actual in ['gerente', 'administrador', 'admin'] %}
+        <a href="{{ url_for('admin.productos') }}">🍔 Menú y Productos</a>
+        {% endif %}
+        
+        {% if rol_actual in ['gerente', 'administrador', 'admin'] %}
+        <a href="{{ url_for('admin.usuarios') }}">👥 Crear Personal / Usuarios</a>
+        {% endif %}
+        
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 12px 0;">
+        
+        {% if rol_actual in ['gerente', 'administrador', 'admin'] %}
+        <a href="{{ url_for('caja_mesas.apertura_caja') }}" style="background: #15803d; color: #fff;">🔑 Apertura de Caja</a>
+        {% endif %}
+        
+        <a href="{{ url_for('caja_mesas.gestionar_mesas') }}" class="active">🗺️ Mapa de Mesas / POS</a>
+        
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 12px 0;">
+        
+        <a href="{{ url_for('admin.cocina') }}">🍳 Pantalla Cocina</a>
+        <a href="{{ url_for('admin.bar') }}">🍺 Pantalla Bar</a>
+        
+        <a href="{{ url_for('auth.logout') }}" style="color: #fca5a5; margin-top: auto;">🚪 Cerrar Sesión</a>
+    </aside>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <button class="toggle-btn" onclick="toggleSidebar()">
+                ☰ <span>Ocultar / Ver Menú</span>
+            </button>
+            
+            <div>
+                {% if rol_actual in ['gerente', 'administrador', 'admin'] %}
+                <button class="btn btn-primary btn-sm fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAgregarMesa">
+                    <i class="fa-solid fa-plus me-1"></i> Agregar Mesas
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="container-fluid px-0">
+            <div class="d-flex align-items-center mb-4">
+                <div>
+                    <h3 class="fw-bold mb-1 text-dark"><i class="fa-solid fa-utensils me-2 text-primary"></i>Control de Mesas — IGOR POS</h3>
+                    <p class="text-muted mb-0">Usuario activo: <strong>{{ usuario_actual }}</strong> ({{ session.get('rol', 'Auxiliar') }})</p>
+                </div>
+            </div>
+
+            <!-- GRILLA DE MESAS -->
+            <div class="row g-4">
+                {% if mesas %}
+                    {% for m in mesas %}
+                    <div class="col-xl-3 col-lg-4 col-md-6">
+                        <div class="card mesa-card border-0 shadow-sm p-3 {% if m.estado == 'Ocupada' %}border-start border-4 border-danger{% else %}border-start border-4 border-success{% endif %}">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="fw-bold mb-0 text-dark">{{ m.numero_mesa }}</h5>
+                                <span class="badge {% if m.estado == 'Ocupada' %}bg-danger{% else %}bg-success{% endif %}">
+                                    {{ m.estado }}
+                                </span>
+                            </div>
+                            <p class="text-muted small mb-2">
+                                {% if m.estado == 'Ocupada' %}
+                                    Atiende: {{ m.mesero_atendiendo }}
+                                {% else %}
+                                    Disponible
+                                {% endif %}
+                            </p>
+                            <h4 class="fw-bold text-dark mb-3">${{ "{:,.2f}".format(m.total_acumulado) }}</h4>
+                            
+                            <div class="d-grid gap-2">
+                                {% if m.estado == 'Ocupada' %}
+                                    <a href="{{ url_for('caja_mesas.abrir_pedido', id_mesa=m.id) }}" class="btn btn-danger btn-sm fw-bold py-2">
+                                        <i class="fa-solid fa-eye me-1"></i> Ver / Detalle Mesa
+                                    </a>
+                                {% else %}
+                                    <a href="{{ url_for('caja_mesas.abrir_pedido', id_mesa=m.id) }}" class="btn btn-outline-primary btn-sm fw-bold py-2">
+                                        <i class="fa-solid fa-folder-open me-1"></i> Abrir Mesa
+                                    </a>
+                                {% endif %}
+                                
+                                {% if rol_actual in ['gerente', 'administrador', 'admin'] and m.estado != 'Ocupada' %}
+                                <form action="{{ url_for('caja_mesas.eliminar_mesa', id_mesa=m.id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar la {{ m.numero_mesa }}?');">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm w-100 fw-bold py-1">
+                                        <i class="fa-solid fa-trash me-1"></i> Eliminar Mesa
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="col-12 text-center py-5">
+                        <p class="text-muted fs-5">No hay mesas configuradas en el sistema.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL PARA AGREGAR MESAS -->
+    <div class="modal fade" id="modalAgregarMesa" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">Agregar Nuevas Mesas</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Cantidad de mesas a generar:</label>
+                            <input type="number" name="cantidad" min="1" max="20" value="1" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">O Nombre específico de la mesa (Opcional):</label>
+                            <input type="text" name="nombre_mesa" placeholder="Ej: Mesa VIP 1" class="form-control">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary btn-sm fw-bold">Guardar Mesas</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

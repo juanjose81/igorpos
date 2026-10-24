@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGOR POS - Todo conectado, todo bajo control</title>
+    <!-- Tailwind CSS CDN para estilos responsivos y modernos -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            scroll-behavior: smooth;
+        }
+        body {
+            background-color: #030712;
+            color: #f8fafc;
+            line-height: 1.6;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 80px;
+            background-color: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #1e293b;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-container img {
+            height: 48px;
+            width: auto;
+            border-radius: 8px;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+        }
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #38bdf8;
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+        }
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 30px;
+        }
+        nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        nav a:hover {
+            color: #38bdf8;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        .btn {
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-outline {
+            border: 2px solid rgba(56, 189, 248, 0.5);
+            color: #38bdf8;
+            background: transparent;
+        }
+        .btn-outline:hover {
+            background-color: rgba(56, 189, 248, 0.1);
+            border-color: #38bdf8;
+        }
+        .btn-primary {
+            background-color: #0284c7;
+            color: #ffffff;
+            border: none;
+            box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+        }
+        .btn-primary:hover {
+            background-color: #38bdf8;
+            color: #0f172a;
+            transform: translateY(-2px);
+        }
+        .btn-whatsapp {
+            background-color: #22c55e;
+            color: #ffffff;
+            border: none;
+            box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);
+        }
+        .btn-whatsapp:hover {
+            background-color: #16a34a;
+            transform: translateY(-2px);
+        }
+        /* Hero Section */
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 80px;
+            gap: 50px;
+            min-height: calc(100vh - 85px);
+        }
+        .hero-content {
+            flex: 1;
+            max-width: 600px;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(56, 189, 248, 0.1);
+            color: #38bdf8;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+        .hero h1 {
+            font-size: 3.2rem;
+            line-height: 1.2;
+            margin-bottom: 20px;
+            color: #f8fafc;
+        }
+        .hero h1 span {
+            color: #38bdf8;
+            text-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+        .tagline {
+            font-size: 1.4rem;
+            color: #38bdf8;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .hero p {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            margin-bottom: 35px;
+        }
+        .hero-cta {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .hero-image {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        .logo-card {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.6));
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            box-shadow: 0 0 30px rgba(56, 189, 248, 0.2);
+            padding: 40px;
+            border-radius: 24px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            max-width: 400px;
+        }
+        .logo-card img {
+            width: 150px;
+            height: 150px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.5));
+        }
+        /* SECCIÓN DE FUNCIONES */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 80px 60px 80px;
+        }
+        .feature-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            padding: 25px;
+            border-radius: 16px;
+            text-align: center;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+        .feature-box:hover {
+            transform: translateY(-5px);
+            border-color: rgba(56, 189, 248, 0.6);
+        }
+        .feature-box h4 {
+            color: #fff;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+        .feature-box p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        /* SECCIÓN DE PRECIOS */
+        .pricing-section {
+            padding: 80px 20px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        .pricing-card {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid #1e293b;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            transition: 0.3s;
+            position: relative;
+        }
+        .pricing-card.popular {
+            border-color: #38bdf8;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.15);
+        }
+        .pricing-card:hover {
+            transform: translateY(-5px);
+        }
+        /* SECCIÓN DE CONTACTO */
+        .contact-section {
+            padding: 80px 20px;
+            background: rgba(15, 23, 42, 0.4);
+            border-top: 1px solid #1e293b;
+            text-align: center;
+        }
+        /* ESTADÍSTICAS */
+        .stats-section {
+            background: rgba(15, 23, 42, 0.4);
+            border-top: 1px solid #1e293b;
+            border-bottom: 1px solid #1e293b;
+            padding: 40px 80px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto 60px auto;
+            border-radius: 20px;
+        }
+        .stat-item h3 {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #38bdf8;
+        }
+        .stat-item p {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+        /* Botón flotante de WhatsApp */
+        .float-whatsapp {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            bottom: 30px;
+            right: 30px;
+            background-color: #25d366;
+            color: #FFF;
+            border-radius: 50px;
+            text-align: center;
+            font-size: 30px;
+            box-shadow: 2px 2px 15px rgba(37, 211, 102, 0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .float-whatsapp:hover {
+            transform: scale(1.1);
+            background-color: #20ba5a;
+        }
+        @media (max-width: 900px) {
+            header, .hero, .features-grid, .stats-section {
+                padding: 30px 20px;
+                flex-direction: column;
+                text-align: center;
+            }
+            .hero-cta {
+                justify-content: center;
+            }
+            nav ul {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navegación Principal -->
+    <header>
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="IGOR POS Logo" onerror="this.style.display='none'">
+            <span class="logo-text">IGOR POS</span>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="#inicio">Inicio</a></li>
+                <li><a href="#funciones">Funciones</a></li>
+                <li><a href="#precios">Precios</a></li>
+                <li><a href="#contacto">Contacto</a></li>
+            </ul>
+        </nav>
+        <div class="nav-buttons">
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline">Iniciar Sesión</a>
+            <a href="{{ url_for('auth.registro') }}" class="btn btn-primary">Registrarse</a>
+        </div>
+    </header>
+
+    <!-- Sección Hero Principal -->
+    <section class="hero" id="inicio">
+        <div class="hero-content">
+            <span class="badge">🚀 El Software POS para Restaurantes del Futuro</span>
+            <h1>El sistema más moderno y completo para tu <span>Restaurante</span></h1>
+            <div class="tagline">Todo conectado, todo bajo control</div>
+            <p>
+                Ideal para restaurantes, gastrobares, bares, cafeterías, comidas rápidas y pizzerías.
+                Control eficiente de ventas, comandas de cocina y bar en tiempo real, facturación e inventario desde cualquier dispositivo.
+            </p>
+            <div class="hero-cta">
+                <a href="https://wa.me/573213860752?text=Hola,%20quiero%20más%20información%20sobre%20IGOR%20POS" target="_blank" class="btn btn-whatsapp">
+                    📲 Para más info WhatsApp
+                </a>
+                <a href="{{ url_for('auth.registro') }}" class="btn btn-primary">Pruébalo gratis y regístrate por 7 días</a>
+            </div>
+        </div>
+        <div class="hero-image">
+            <div class="logo-card">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="IGOR POS Logo" onerror="this.style.display='none'">
+                <div>
+                    <h3 style="font-size: 1.5rem; color: #fff; font-weight: bold;">IGOR <span style="color: #38bdf8;">POS</span></h3>
+                    <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 5px;">SISTEMA INTELIGENTE EN LA NUBE</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECCIÓN DE FUNCIONES CLAVE -->
+    <section id="funciones">
+        <div class="features-grid">
+            <div class="feature-box">
+                <h4>🍽️ Comandas Digitales</h4>
+                <p>Envía pedidos directo a cocina y bar al instante sin errores.</p>
+            </div>
+            <div class="feature-box">
+                <h4>📦 Inventario Inteligente</h4>
+                <p>Control estricto de insumos, recetas y stock en tiempo real.</p>
+            </div>
+            <div class="feature-box">
+                <h4>🧾 Facturación y Caja</h4>
+                <p>Aperturas, cierres de caja y arqueos seguros y rápidos.</p>
+            </div>
+            <div class="feature-box">
+                <h4>📊 Reportes en la Nube</h4>
+                <p>Accede a las estadísticas de tu negocio desde cualquier lugar.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECCIÓN DE PRECIOS -->
+    <section id="precios" class="pricing-section">
+        <div class="text-center max-w-2xl mx-auto mb-12">
+            <span class="badge">💰 Planes y Suscripciones</span>
+            <h2 class="text-3xl font-extrabold text-white mt-2">Invierte en el crecimiento de tu restaurante</h2>
+            <p class="text-slate-400 mt-2">Empieza con 7 días de prueba gratis. Sin contratos forzosos.</p>
+        </div>
+        <div class="pricing-grid">
+            <!-- Plan Mensual -->
+            <div class="pricing-card">
+                <h3 class="text-xl font-bold text-white mb-2">Plan Mensual</h3>
+                <p class="text-slate-400 text-sm mb-6">Ideal para empezar a operar de inmediato.</p>
+                <div class="text-4xl font-extrabold text-sky-400 mb-6">$70,000 <span class="text-sm font-normal text-slate-400">COP / mes</span></div>
+                <ul class="text-left text-slate-300 space-y-3 mb-8 text-sm">
+                    <li><i class="fa-solid fa-check text-green-400 me-2"></i> Acceso completo a todos los módulos</li>
+                    <li><i class="fa-solid fa-check text-green-400 me-2"></i> Soporte técnico prioritario</li>
+                    <li><i class="fa-solid fa-check text-green-400 me-2"></i> Actualizaciones automáticas en la nube</li>
+                </ul>
+                <a href="https://checkout.wompi.co/l/5tp88O" target="_blank" class="btn btn-primary w-full justify-center">Elegir Plan Mensual</a>
+            </div>
+
+            <!-- Plan Anual (Popular) -->
+            <div class="pricing-card popular">
+                <span class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-sky-500 text-slate-950 font-bold text-xs px-3 py-1 rounded-full uppercase tracking-wider">Ahorra Más</span>
+                <h3 class="text-xl font-bold text-white mb-2">Plan Anual</h3>
+                <p class="text-slate-400 text-sm mb-6">Para negocios con visión a largo plazo.</p>
+                <div class="text-4xl font-extrabold text-sky-400 mb-6">$660,000 <span class="text-sm font-normal text-slate-400">COP / año</span></div>
+                <ul class="text-left text-slate-300 space-y-3 mb-8 text-sm">
+                    <li><i class="fa-solid fa-check text-green-400 me-2"></i> Todos los beneficios del plan mensual</li>
+                    <li><i class="fa-solid fa-check text-green-400 me-2"></i> Descuento especial aplicado</li>
+                    <li><i class="fa-solid fa-check text-green-400 me-2"></i> Garantía de disponibilidad 99.9%</li>
+                </ul>
+                <a href="https://checkout.wompi.co/l/dYxdWp" target="_blank" class="btn btn-primary w-full justify-center">Elegir Plan Anual</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECCIÓN DE CONTACTO -->
+    <section id="contacto" class="contact-section">
+        <div class="max-w-xl mx-auto">
+            <span class="badge">📞 Contáctanos</span>
+            <h2 class="text-3xl font-extrabold text-white mt-2">¿Tienes alguna duda o necesitas una demo?</h2>
+            <p class="text-slate-400 mt-3 mb-6">Estamos listos para atenderte por WhatsApp de forma inmediata y ayudarte a configurar tu restaurante.</p>
+            <a href="https://wa.me/573213860752?text=Hola,%20tengo%20dudas%20sobre%20IGOR%20POS%20y%20quiero%20asesoría" target="_blank" class="btn btn-whatsapp text-lg px-8 py-3">
+                💬 Escríbenos por WhatsApp Directo
+            </a>
+        </div>
+    </section>
+
+    <!-- ESTADÍSTICAS DE CONFIANZA -->
+    <section class="stats-section">
+        <div class="stat-item">
+            <h3>+500</h3>
+            <p>Restaurantes activos</p>
+        </div>
+        <div class="stat-item">
+            <h3>+1M</h3>
+            <p>Pedidos procesados</p>
+        </div>
+        <div class="stat-item">
+            <h3>99.9%</h3>
+            <p>Disponibilidad en la nube</p>
+        </div>
+        <div class="stat-item">
+            <h3>24/7</h3>
+            <p>Soporte técnico</p>
+        </div>
+    </section>
+
+    <!-- Botón flotante de WhatsApp -->
+    <a href="https://wa.me/573213860752?text=Hola!%20Me%20gustaría%20saber%20más%20sobre%20IGOR%20POS" class="float-whatsapp" target="_blank" title="Contactar por WhatsApp">
+        💬
+    </a>
+</body>
+</html>

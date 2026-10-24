@@ -1,0 +1,43 @@
+<!-- Menú Lateral Reutilizable — IGOR POS -->
+<aside id="sidebar" style="width: 260px; background-color: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; padding: 20px; transition: transform 0.3s ease; z-index: 100; min-height: 100vh; flex-shrink: 0;">
+    <h2 style="color: #38bdf8; font-size: 1.5rem; margin-bottom: 25px; text-align: center; font-weight: 700;">IGOR POS</h2>
+    
+    <a href="{{ url_for('admin.dashboard') }}" style="color: #94a3b8; text-decoration: none; padding: 10px 15px; border-radius: 8px; margin-bottom: 6px; font-weight: 500; display: block; font-size: 0.95rem; transition: 0.2s;">🏠 Panel Principal</a>
+    
+    <a href="{{ url_for('admin.productos') }}" style="color: #94a3b8; text-decoration: none; padding: 10px 15px; border-radius: 8px; margin-bottom: 6px; font-weight: 500; display: block; font-size: 0.95rem; transition: 0.2s;">🍔 Menú y Productos</a>
+    
+    <!-- 🔒 Restricción Estricta: Solo Gerentes y Administradores -->
+    {% set rol_actual = session.get('rol', '') | lower %}
+    {% if rol_actual in ['gerente', 'administrador', 'admin'] %}
+    <a href="{{ url_for('admin.usuarios') }}" style="color: #94a3b8; text-decoration: none; padding: 10px 15px; border-radius: 8px; margin-bottom: 6px; font-weight: 500; display: block; font-size: 0.95rem; transition: 0.2s;">👥 Crear Personal / Usuarios</a>
+    
+    <!-- 💳 Gestión de Suscripción (Exclusivo Gerente) -->
+    <a href="{{ url_for('admin.planes') }}" style="color: #38bdf8; text-decoration: none; padding: 10px 15px; border-radius: 8px; margin-bottom: 6px; font-weight: 500; display: block; font-size: 0.95rem; transition: 0.2s; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2);">💳 Mi Suscripción / Plan</a>
+    {% endif %}
+    
+    <hr style="border: 0; border-top: 1px solid #334155; margin: 12px 0;">
+    
+    <!-- 🔒 Restricción Estricta: Solo Gerentes y Administradores -->
+    {% if rol_actual in ['gerente', 'administrador', 'admin'] %}
+    <a href="{{ url_for('caja_mesas.apertura_caja') }}" style="background: #15803d; color: #fff; text-decoration: none; padding: 10px 15px; border-radius: 8px; margin-bottom: 6px; font-weight: 500; display: block; font-size: 0.95rem; transition: 0.2s;">🔑 Apertura de Caja</a>
+    {% endif %}
+    
+    <a href="{{ url_for('caja_mesas.gestionar_mesas') }}" style="color: #94a3b8; text-decoration: none; padding: 10px 15px; border-radius: 8px; margin-bottom: 6px; font-weight: 500; display: block; font-size: 0.95rem; transition: 0.2s;">🗺️ Mapa de Mesas / POS</a>
+    
+    <hr style="border: 0; border-top: 1px solid #334155; margin: 12px 0;">
+    
+    <a href="{{ url_for('admin.cocina') }}" style="color: #94a3b8; text-decoration: none; padding: 10px 15px; border-radius: 8px; margin-bottom: 6px; font-weight: 500; display: block; font-size: 0.95rem; transition: 0.2s;">🍳 Pantalla Cocina</a>
+    
+    <a href="{{ url_for('admin.bar') }}" style="color: #94a3b8; text-decoration: none; padding: 10px 15px; border-radius: 8px; margin-bottom: 6px; font-weight: 500; display: block; font-size: 0.95rem; transition: 0.2s;">🍺 Pantalla Bar</a>
+    
+    <a href="{{ url_for('auth.logout') }}" style="color: #fca5a5; text-decoration: none; padding: 10px 15px; border-radius: 8px; margin-top: auto; font-weight: 500; display: block; font-size: 0.95rem; transition: 0.2s;">🚪 Cerrar Sesión</a>
+</aside>
+<style>
+    aside.collapsed { transform: translateX(-100%); position: absolute; height: 100%; }
+</style>
+<script>
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('collapsed');
+    }
+</script>
