@@ -1,12 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, flash
-import psycopg
 import urllib.parse
 import traceback
 from app.dian_service import enviar_factura_dian_api
+from app.database import get_db_connection
 
 caja_mesas_bp = Blueprint('caja_mesas', __name__)
 
-DB_CONFIG = "dbname=novagest_db user=postgres password=Novagest2026 host=localhost"
 NUMERO_EMISOR_POS = "3213860752"
 
 def asegurar_tablas_globales(cursor, conex):
@@ -128,7 +127,7 @@ def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, id_venta, total_ve
         
     detalle_items = ""
     for item in items:
-        detalle_items += f"  • {item['cantidad']}x {item['producto']} — ${item['subtotal']:,.2f}\n"
+        detalle_items += f"   • {item['cantidad']}x {item['producto']} — ${item['subtotal']:,.2f}\n"
         
     mensaje = (
         f"🚚 *Entrega:* Mesa / Domicilio\n"
@@ -163,7 +162,7 @@ def gestionar_mesas():
     if not user_id:
         return redirect('/login')
         
-    conex = psycopg.connect(DB_CONFIG)
+    conex = get_db_connection()
     cursor = conex.cursor()
     asegurar_tablas_globales(cursor, conex)
     
@@ -258,7 +257,7 @@ def eliminar_mesa(id_mesa):
         return redirect(url_for('caja_mesas.gestionar_mesas'))
     
     try:
-        conex = psycopg.connect(DB_CONFIG)
+        conex = get_db_connection()
         cursor = conex.cursor()
         asegurar_tablas_globales(cursor, conex)
         empresa_id = obtener_empresa_id_seguro(cursor)
@@ -284,7 +283,7 @@ def eliminar_mesa(id_mesa):
 @caja_mesas_bp.route('/admin/mesas/json-general')
 def mesas_json_general():
     try:
-        conex = psycopg.connect(DB_CONFIG)
+        conex = get_db_connection()
         cursor = conex.cursor()
         asegurar_tablas_globales(cursor, conex)
         empresa_id = obtener_empresa_id_seguro(cursor)
@@ -353,7 +352,7 @@ def abrir_pedido(id_mesa):
     rol_usuario = session.get('rol', 'Auxiliar')
     usuario_actual = session.get('nombre', 'Auxiliar')
     
-    conex = psycopg.connect(DB_CONFIG)
+    conex = get_db_connection()
     cursor = conex.cursor()
     asegurar_tablas_globales(cursor, conex)
     empresa_id = obtener_empresa_id_seguro(cursor)
@@ -394,7 +393,6 @@ def abrir_pedido(id_mesa):
                 
     if request.method == 'POST' and 'enviar_comanda' in request.form:
         try:
-            # ⏱️ Actualización segura con la fecha exacta del temporizador (fecha_comandado = NOW())
             cursor.execute("""
                 UPDATE pedidos_mesa 
                 SET estado = 'Comandado', fecha_comandado = NOW() 
@@ -484,7 +482,7 @@ def vaciar_mesa(id_mesa):
         return redirect('/login')
         
     try:
-        conex = psycopg.connect(DB_CONFIG)
+        conex = get_db_connection()
         cursor = conex.cursor()
         asegurar_tablas_globales(cursor, conex)
         empresa_id = obtener_empresa_id_seguro(cursor)
@@ -509,7 +507,7 @@ def eliminar_producto_catalogo(id_producto):
         return redirect('/admin/productos')
     
     try:
-        conex = psycopg.connect(DB_CONFIG)
+        conex = get_db_connection()
         cursor = conex.cursor()
         asegurar_tablas_globales(cursor, conex)
         empresa_id = obtener_empresa_id_seguro(cursor)
@@ -527,7 +525,7 @@ def eliminar_producto_catalogo(id_producto):
 @caja_mesas_bp.route('/admin/mesas/json/<int:id_mesa>')
 def obtener_pedido_json(id_mesa):
     try:
-        conex = psycopg.connect(DB_CONFIG)
+        conex = get_db_connection()
         cursor = conex.cursor()
         asegurar_tablas_globales(cursor, conex)
         empresa_id = obtener_empresa_id_seguro(cursor)
@@ -560,7 +558,7 @@ def obtener_pedido_json(id_mesa):
 
 @caja_mesas_bp.route('/admin/mesas/pedido/aumentar/<int:id_item>', methods=['POST'])
 def aumentar_cantidad(id_item):
-    conex = psycopg.connect(DB_CONFIG)
+    conex = get_db_connection()
     cursor = conex.cursor()
     asegurar_tablas_globales(cursor, conex)
     empresa_id = obtener_empresa_id_seguro(cursor)
@@ -582,7 +580,7 @@ def aumentar_cantidad(id_item):
 
 @caja_mesas_bp.route('/admin/mesas/pedido/disminuir/<int:id_item>', methods=['POST'])
 def disminuir_cantidad(id_item):
-    conex = psycopg.connect(DB_CONFIG)
+    conex = get_db_connection()
     cursor = conex.cursor()
     asegurar_tablas_globales(cursor, conex)
     empresa_id = obtener_empresa_id_seguro(cursor)
@@ -611,7 +609,7 @@ def disminuir_cantidad(id_item):
 
 @caja_mesas_bp.route('/admin/mesas/pedido/eliminar-item/<int:id_item>', methods=['POST'])
 def eliminar_item(id_item):
-    conex = psycopg.connect(DB_CONFIG)
+    conex = get_db_connection()
     cursor = conex.cursor()
     asegurar_tablas_globales(cursor, conex)
     empresa_id = obtener_empresa_id_seguro(cursor)
@@ -634,7 +632,7 @@ def cambiar_mesa(id_mesa_origen):
     id_mesa_destino = request.form.get('id_mesa_destino')
     if not id_mesa_destino:
         return redirect(url_for('caja_mesas.abrir_pedido', id_mesa=id_mesa_origen))
-    conex = psycopg.connect(DB_CONFIG)
+    conex = get_db_connection()
     cursor = conex.cursor()
     asegurar_tablas_globales(cursor, conex)
     empresa_id = obtener_empresa_id_seguro(cursor)
@@ -673,7 +671,7 @@ def cerrar_facturar_mesa(id_mesa):
     cliente_nit = request.form.get('cliente_nit', '').strip()
     cliente_telefono = request.form.get('cliente_telefono', '').strip()
     
-    conex = psycopg.connect(DB_CONFIG)
+    conex = get_db_connection()
     cursor = conex.cursor()
     asegurar_tablas_globales(cursor, conex)
     empresa_id = obtener_empresa_id_seguro(cursor)
@@ -762,7 +760,7 @@ def apertura_caja():
     if rol_usuario not in roles_permitidos:
         return render_template('acceso_restringido.html'), 403
         
-    conex = psycopg.connect(DB_CONFIG)
+    conex = get_db_connection()
     cursor = conex.cursor()
     asegurar_tablas_globales(cursor, conex)
     empresa_id = obtener_empresa_id_seguro(cursor)
@@ -844,7 +842,6 @@ def apertura_caja():
             'monto_total_estimado': monto_total_estimado
         }
         
-        # 🟢 FILTRADO ESTRICTO: Oculta por completo cualquier venta sin mesero, nula o 'Ventas Directas de Caja'
         cursor.execute("""
             SELECT atendido_por, COUNT(id) as total_mesas_atendidas, SUM(total_venta) as total_vendido
             FROM historial_ventas
@@ -891,7 +888,7 @@ def reset_emergencia():
     fecha_fin = request.form.get('fecha_fin')
     tipo_reseteo = request.form.get('tipo_reseteo', 'todo')
     try:
-        conex = psycopg.connect(DB_CONFIG)
+        conex = get_db_connection()
         cursor = conex.cursor()
         asegurar_tablas_globales(cursor, conex)
         empresa_id = obtener_empresa_id_seguro(cursor)
@@ -924,7 +921,7 @@ def imprimir_ticket(id_venta):
     link_wa = request.args.get('link_wa')
     factura_electronica = session.pop('dian_result_temp', None)
     
-    conex = psycopg.connect(DB_CONFIG)
+    conex = get_db_connection()
     cursor = conex.cursor()
     asegurar_tablas_globales(cursor, conex)
     empresa_id = obtener_empresa_id_seguro(cursor)
