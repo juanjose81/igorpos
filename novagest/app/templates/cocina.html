@@ -120,25 +120,30 @@
             
             elementos.forEach(el => {
                 const fechaStr = el.getAttribute('data-fecha');
-                if (!fechaStr) return;
-
-                const fechaComanda = new Date(fechaStr);
-                const ahora = new Date();
+                if (!fechaStr || fechaStr.trim() === '' || fechaStr === 'None') return;
                 
+                // Normalizamos el formato de fecha para que JS lo lea sin problemas en cualquier navegador
+                let fechaIso = fechaStr.includes('T') ? fechaStr : fechaStr.replace(' ', 'T');
+                const fechaComanda = new Date(fechaIso);
+                
+                if (isNaN(fechaComanda.getTime())) return;
+
+                const ahora = new Date();
                 let diffSegundos = Math.floor((ahora - fechaComanda) / 1000);
                 if (diffSegundos < 0) diffSegundos = 0;
-
+                
                 const minutos = Math.floor(diffSegundos / 60);
                 const segundos = diffSegundos % 60;
-
+                
                 const minStr = String(minutos).padStart(2, '0');
                 const segStr = String(segundos).padStart(2, '0');
-
+                
                 const spanTiempo = el.querySelector('.tiempo-transcurrido');
                 if (spanTiempo) {
                     spanTiempo.textContent = `${minStr}:${segStr}`;
                 }
-
+                
+                // Alertas de color según el tiempo transcurrido en cocina
                 if (minutos >= 15) {
                     el.style.backgroundColor = '#dc2626';
                     el.style.color = '#fff';
@@ -152,6 +157,7 @@
             });
         }
 
+        // Actualizar el cronómetro cada segundo en tiempo real
         setInterval(actualizarTemporizadores, 1000);
         actualizarTemporizadores();
     </script>
