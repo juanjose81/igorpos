@@ -2,16 +2,14 @@ from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg
+from app.database import get_db_connection
 
 auth_bp = Blueprint('auth', __name__)
-
-# Conectado formalmente a novagest_db
-DB_CONFIG = "dbname=novagest_db user=postgres password=Novagest2026 host=localhost"
 
 # Función automática para crear la tabla y asegurar sus columnas si ya existe
 def asegurar_tabla():
     try:
-        conex = psycopg.connect(DB_CONFIG)
+        conex = get_db_connection()
         with conex.cursor() as cursor:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS usuarios (
@@ -67,7 +65,7 @@ def registro():
         trial_end = datetime.now() + timedelta(days=7)
         
         try:
-            conex = psycopg.connect(DB_CONFIG)
+            conex = get_db_connection()
             with conex.cursor() as cursor:
                 # 🛑 1. VALIDACIÓN ANTI-DUPLICADOS: Verificamos si el correo ya existe en la BD
                 cursor.execute("SELECT id FROM usuarios WHERE LOWER(email) = LOWER(%s);", (email,))
@@ -110,7 +108,7 @@ def login():
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password')
         try:
-            conex = psycopg.connect(DB_CONFIG)
+            conex = get_db_connection()
             with conex.cursor() as cursor:
                 # Consultamos también los datos de suscripción del gerente de la empresa (CORREGIDO: Se agregó SELECT)
                 cursor.execute("""
@@ -136,7 +134,7 @@ def login():
                     plan_status = user[8] or 'TRIAL'
                     
                     # Buscamos al GERENTE de esta empresa para revisar el estado real de pago/trial de la compañía
-                    conex = psycopg.connect(DB_CONFIG)
+                    conex = get_db_connection()
                     with conex.cursor() as cursor:
                         # (CORREGIDO: Se agregó SELECT)
                         cursor.execute("""
@@ -153,14 +151,14 @@ def login():
                         # Verificamos si el trial expiró y no hay suscripción activa
                         if g_status == 'TRIAL' and g_trial and now > g_trial:
                             g_status = 'EXPIRED'
-                            conex = psycopg.connect(DB_CONFIG)
+                            conex = get_db_connection()
                             with conex.cursor() as cursor:
                                 cursor.execute("UPDATE usuarios SET plan_status = 'EXPIRED' WHERE id = %s", (empresa_id,))
                                 conex.commit()
                             conex.close()
                         elif g_status == 'ACTIVE' and g_sub and now > g_sub:
                             g_status = 'EXPIRED'
-                            conex = psycopg.connect(DB_CONFIG)
+                            conex = get_db_connection()
                             with conex.cursor() as cursor:
                                 cursor.execute("UPDATE usuarios SET plan_status = 'EXPIRED' WHERE id = %s", (empresa_id,))
                                 conex.commit()
