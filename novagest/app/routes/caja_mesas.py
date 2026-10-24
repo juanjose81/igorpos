@@ -384,8 +384,8 @@ def abrir_pedido(id_mesa):
                     cursor.execute("UPDATE pedidos_mesa SET cantidad = %s WHERE id = %s AND empresa_id = %s;", (nueva_cant, item_existente[0], empresa_id))
                 else:
                     cursor.execute("""
-                        INSERT INTO pedidos_mesa (empresa_id, id_mesa, producto, precio, cantidad, estado, destino)
-                        VALUES (%s, %s, %s, %s, %s, 'Pendiente', %s);
+                        INSERT INTO pedidos_mesa (empresa_id, id_mesa, producto, precio, cantidad, estado, destino, fecha_comandado)
+                        VALUES (%s, %s, %s, %s, %s, 'Pendiente', %s, NOW());
                     """, (empresa_id, id_mesa, p_nom, p_pre, cantidad, p_des))
                 conex.commit()
             except Exception as e:
