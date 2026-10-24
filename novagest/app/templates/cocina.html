@@ -115,21 +115,35 @@
             menu.classList.toggle('abierto');
         }
 
+        function parsearFechaSegura(fechaStr) {
+            if (!fechaStr || fechaStr.trim() === '' || fechaStr === 'None') return null;
+            
+            // Normalizar formato estándar PostgreSQL a ISO
+            let normalizada = fechaStr.trim().replace(' ', 'T');
+            let d = new Date(normalizada);
+            
+            // Si el navegador no puede interpretarlo directamente, lo parseamos por partes
+            if (isNaN(d.getTime())) {
+                let partes = fechaStr.split(/[- :]/);
+                if (partes.length >= 6) {
+                    d = new Date(partes[0], partes[1] - 1, partes[2], partes[3], partes[4], partes[5]);
+                }
+            }
+            return isNaN(d.getTime()) ? null : d;
+        }
+
         function actualizarTemporizadores() {
             const elementos = document.querySelectorAll('.temporizador-comanda');
             
             elementos.forEach(el => {
                 const fechaStr = el.getAttribute('data-fecha');
-                if (!fechaStr || fechaStr.trim() === '' || fechaStr === 'None') return;
+                const fechaComanda = parsearFechaSegura(fechaStr);
                 
-                // Normalizamos el formato de fecha para que JS lo lea sin problemas en cualquier navegador
-                let fechaIso = fechaStr.includes('T') ? fechaStr : fechaStr.replace(' ', 'T');
-                const fechaComanda = new Date(fechaIso);
-                
-                if (isNaN(fechaComanda.getTime())) return;
+                if (!fechaComanda) return;
 
                 const ahora = new Date();
                 let diffSegundos = Math.floor((ahora - fechaComanda) / 1000);
+                
                 if (diffSegundos < 0) diffSegundos = 0;
                 
                 const minutos = Math.floor(diffSegundos / 60);
@@ -143,7 +157,7 @@
                     spanTiempo.textContent = `${minStr}:${segStr}`;
                 }
                 
-                // Alertas de color según el tiempo transcurrido en cocina
+                // Alertas de color según los minutos transcurridos
                 if (minutos >= 15) {
                     el.style.backgroundColor = '#dc2626';
                     el.style.color = '#fff';
@@ -157,7 +171,7 @@
             });
         }
 
-        // Actualizar el cronómetro cada segundo en tiempo real
+        // Ejecutar inmediatamente y mantener actualizando cada segundo en vivo
         setInterval(actualizarTemporizadores, 1000);
         actualizarTemporizadores();
     </script>
