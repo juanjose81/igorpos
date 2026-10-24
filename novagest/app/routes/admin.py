@@ -291,7 +291,7 @@ def usuarios():
         
     return render_template('admin.html', usuarios=lista_usuarios, seccion='usuarios')
 
-# --- PANTALLA DE COCINA CORREGIDA CON CRONÓMETROS ---
+# --- PANTALLA DE COCINA CON TIMESTAMP EXACTO EN MILISEGUNDOS ---
 @admin_bp.route('/admin/cocina')
 def cocina():
     user_id = session.get('usuario_id') or session.get('user_id')
@@ -320,13 +320,15 @@ def cocina():
     
     pedidos = []
     for f in filas:
+        dt = f[5]
+        ts_ms = int(dt.timestamp() * 1000) if dt else 0
         pedidos.append({
             'id': f[0],
             'mesa': f[1],
             'producto': f[2],
             'cantidad': f[3],
             'estado': f[4],
-            'fecha_comandado': str(f[5]) if f[5] else ''
+            'timestamp_ms': ts_ms
         })
         
     return render_template('cocina.html', pedidos=pedidos)
