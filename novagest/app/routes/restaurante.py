@@ -1,9 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
-import psycopg
+from app.database import get_db_connection
 
 restaurante_bp = Blueprint('restaurante', __name__)
-
-DB_CONFIG = "dbname=novagest_db user=postgres password=Novagest2026 host=localhost"
 
 # ==========================================
 # REDIRECCIÓN BLINDADA CONTRA EL ERROR 404
@@ -21,7 +19,7 @@ def crear_producto():
         categoria = request.form.get('categoria')
         descripcion = request.form.get('descripcion', '')
         try:
-            conex = psycopg.connect(DB_CONFIG)
+            conex = get_db_connection()
             with conex.cursor() as cursor:
                 cursor.execute(
                     "INSERT INTO productos (nombre, precio, categoria, descripcion) VALUES (%s, %s, %s, %s)",
@@ -43,7 +41,7 @@ def vista_cocina():
         return redirect('/login')
         
     try:
-        conex = psycopg.connect(DB_CONFIG)
+        conex = get_db_connection()
         with conex.cursor() as cursor:
             cursor.execute("""
                 SELECT p.id, m.numero_mesa, p.producto, p.cantidad, p.estado, p.destino, p.fecha_comandado
@@ -59,7 +57,7 @@ def vista_cocina():
     except Exception as e:
         print("--- ERROR EN COCINA: ---", e)
         pedidos = []
-
+        
     lista_pedidos = []
     for p in pedidos:
         f_comandado = p[6].isoformat() if p[6] else ''
@@ -82,7 +80,7 @@ def vista_bar():
         return redirect('/login')
         
     try:
-        conex = psycopg.connect(DB_CONFIG)
+        conex = get_db_connection()
         with conex.cursor() as cursor:
             cursor.execute("""
                 SELECT p.id, m.numero_mesa, p.producto, p.cantidad, p.estado, p.destino, p.fecha_comandado
@@ -97,7 +95,7 @@ def vista_bar():
         conex.close()
     except Exception as e:
         pedidos = []
-
+        
     lista_pedidos = []
     for p in pedidos:
         f_comandado = p[6].isoformat() if p[6] else ''
@@ -116,7 +114,7 @@ def vista_bar():
 @restaurante_bp.route('/admin/pedido/entregar/<int:id_pedido>', methods=['POST'])
 def marcar_entregado(id_pedido):
     try:
-        conex = psycopg.connect(DB_CONFIG)
+        conex = get_db_connection()
         with conex.cursor() as cursor:
             cursor.execute("UPDATE pedidos_mesa SET estado = 'Entregado' WHERE id = %s;", (id_pedido,))
             conex.commit()

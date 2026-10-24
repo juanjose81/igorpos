@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
-import psycopg
+from app.database import get_db_connection
 
 wompi_bp = Blueprint('wompi', __name__)
-
-DB_CONFIG = "dbname=novagest_db user=postgres password=Novagest2026 host=localhost"
 
 # 1. Pantalla donde el Gerente ve los planes y el botón de pago de Wompi
 @wompi_bp.route('/planes', methods=['GET'])
@@ -39,7 +37,7 @@ def wompi_webhook():
                 fecha_fin = datetime.now() + timedelta(days=dias_a_sumar)
                 
                 # Actualizamos en la base de datos
-                conex = psycopg.connect(DB_CONFIG)
+                conex = get_db_connection()
                 with conex.cursor() as cursor:
                     cursor.execute("""
                         UPDATE usuarios 
@@ -53,7 +51,6 @@ def wompi_webhook():
                 
                 print(f"DEBUG: ¡Suscripción activada con éxito para la empresa/usuario {referencia}!")
                 return jsonify({"status": "success", "message": "Suscripción actualizada"}), 200
-
         return jsonify({"status": "ignored"}), 200
     except Exception as e:
         print(f"DEBUG ERROR EN WEBHOOK WOMPI: {e}")

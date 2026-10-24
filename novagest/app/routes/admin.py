@@ -1,11 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash
-import psycopg
+from app.database import get_db_connection
 
 admin_bp = Blueprint('admin', __name__)
-
-# Conectado formalmente a novagest_db
-DB_CONFIG = "dbname=novagest_db user=postgres password=Novagest2026 host=localhost"
 
 def asegurar_tabla_empresas(cursor, conex):
     cursor.execute("""
@@ -119,7 +116,7 @@ def productos():
             
         if nombre:
             try:
-                conex = psycopg.connect(DB_CONFIG)
+                conex = get_db_connection()
                 with conex.cursor() as cursor:
                     asegurar_tabla_empresas(cursor, conex)
                     asegurar_tabla_productos(cursor, conex)
@@ -137,7 +134,7 @@ def productos():
         
     lista_productos = []
     try:
-        conex = psycopg.connect(DB_CONFIG)
+        conex = get_db_connection()
         with conex.cursor() as cursor:
             asegurar_tabla_empresas(cursor, conex)
             asegurar_tabla_productos(cursor, conex)
@@ -169,7 +166,7 @@ def modificar_stock(producto_id, accion):
     empresa_id = session.get('empresa_id') or user_id
     
     try:
-        conex = psycopg.connect(DB_CONFIG)
+        conex = get_db_connection()
         with conex.cursor() as cursor:
             cursor.execute("SELECT stock FROM productos WHERE id = %s AND empresa_id = %s;", (producto_id, empresa_id))
             row = cursor.fetchone()
@@ -205,7 +202,7 @@ def eliminar_producto(producto_id):
     empresa_id = session.get('empresa_id') or user_id
     
     try:
-        conex = psycopg.connect(DB_CONFIG)
+        conex = get_db_connection()
         with conex.cursor() as cursor:
             cursor.execute("DELETE FROM productos WHERE id = %s AND empresa_id = %s;", (producto_id, empresa_id))
             conex.commit()
@@ -237,7 +234,7 @@ def usuarios():
         
         if nombre and email and password:
             try:
-                conex = psycopg.connect(DB_CONFIG)
+                conex = get_db_connection()
                 with conex.cursor() as cursor:
                     asegurar_tabla_empresas(cursor, conex)
                     asegurar_tabla_usuarios(cursor, conex)
@@ -255,7 +252,7 @@ def usuarios():
                             VALUES (%s, %s, %s, %s, %s, %s, %s);
                         """, (empresa_id, nombre, email, password, password_hash, rol, email))
                         conex.commit()
-                        flash('¡Usuario creado con éxito y asociado à tu empresa!', 'success')
+                        flash('¡Usuario creado con éxito y asociado a tu empresa!', 'success')
                 conex.close()
             except Exception as e:
                 flash(f'Error al crear usuario: {e}', 'danger')
@@ -263,7 +260,7 @@ def usuarios():
         
     lista_usuarios = []
     try:
-        conex = psycopg.connect(DB_CONFIG)
+        conex = get_db_connection()
         with conex.cursor() as cursor:
             asegurar_tabla_empresas(cursor, conex)
             asegurar_tabla_usuarios(cursor, conex)
