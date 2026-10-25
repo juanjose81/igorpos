@@ -73,7 +73,7 @@ def registro():
                 
                 if usuario_existente:
                     conex.close()
-                    flash(f"⚠️ El correo '{email}' ya se encuentra registrado en el sistema. Prueba con otro.", 'danger')
+                    flash("Esta cuenta ya existe. Por favor, inicia sesión o usa otro correo.", 'danger')
                     return render_template('registro.html')
                 
                 # 2. Si no existe, insertamos el usuario gerente incluyendo los campos del trial
@@ -110,7 +110,6 @@ def login():
         try:
             conex = get_db_connection()
             with conex.cursor() as cursor:
-                # Consultamos también los datos de suscripción del gerente de la empresa (CORREGIDO: Se agregó SELECT)
                 cursor.execute("""
                     SELECT u.id, u.email, u.password_hash, u.rol, u.nombre, u.empresa_id, 
                     u.trial_ends_at, u.subscription_ends_at, u.plan_status 
@@ -119,79 +118,76 @@ def login():
                 user = cursor.fetchone()
             conex.close()
             
-            if not user:
-                print(f"DEBUG: El correo '{email}' no existe en la base de datos.")
-                flash(f"El correo '{email}' no existe en la base de datos.", 'danger')
+            # 🛑 VALIDACIÓN DE CREDENCIALES: Si no existe el usuario o la contraseña es incorrecta
+            if not user or not user[2] or not check_password_hash(user[2], password):
+                print(f"DEBUG: Credenciales incorrectas para '{email}'.")
+                flash("El usuario o contraseña es incorrecto.", 'danger')
             else:
-                if check_password_hash(user[2], password):
-                    print("DEBUG: ¡Contraseña correcta!")
+                print("DEBUG: ¡Contraseña correcta!")
+                
+                user_id = user[0]
+                rol = user[3]
+                empresa_id = user[5] or user[0]
+                trial_ends_at = user[6]
+                subscription_ends_at = user[7]
+                plan_status = user[8] or 'TRIAL'
+                
+                # Buscamos al GERENTE de esta empresa para revisar el estado real de pago/trial de la compañía
+                conex = get_db_connection()
+                with conex.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT trial_ends_at, subscription_ends_at, plan_status 
+                        FROM usuarios WHERE id = %s
+                    """, (empresa_id,))
+                    gerente_data = cursor.fetchone()
+                conex.close()
+                
+                if gerente_data:
+                    g_trial, g_sub, g_status = gerente_data
+                    now = datetime.now()
                     
-                    user_id = user[0]
-                    rol = user[3]
-                    empresa_id = user[5] or user[0]
-                    trial_ends_at = user[6]
-                    subscription_ends_at = user[7]
-                    plan_status = user[8] or 'TRIAL'
-                    
-                    # Buscamos al GERENTE de esta empresa para revisar el estado real de pago/trial de la compañía
-                    conex = get_db_connection()
-                    with conex.cursor() as cursor:
-                        # (CORREGIDO: Se agregó SELECT)
-                        cursor.execute("""
-                            SELECT trial_ends_at, subscription_ends_at, plan_status 
-                            FROM usuarios WHERE id = %s
-                        """, (empresa_id,))
-                        gerente_data = cursor.fetchone()
-                    conex.close()
-                    
-                    if gerente_data:
-                        g_trial, g_sub, g_status = gerente_data
-                        now = datetime.now()
+                    # Verificamos si el trial expiró y no hay suscripción activa
+                    if g_status == 'TRIAL' and g_trial and now > g_trial:
+                        g_status = 'EXPIRED'
+                        conex = get_db_connection()
+                        with conex.cursor() as cursor:
+                            cursor.execute("UPDATE usuarios SET plan_status = 'EXPIRED' WHERE id = %s", (empresa_id,))
+                            conex.commit()
+                        conex.close()
+                    elif g_status == 'ACTIVE' and g_sub and now > g_sub:
+                        g_status = 'EXPIRED'
+                        conex = get_db_connection()
+                        with conex.cursor() as cursor:
+                            cursor.execute("UPDATE usuarios SET plan_status = 'EXPIRED' WHERE id = %s", (empresa_id,))
+                            conex.commit()
+                        conex.close()
                         
-                        # Verificamos si el trial expiró y no hay suscripción activa
-                        if g_status == 'TRIAL' and g_trial and now > g_trial:
-                            g_status = 'EXPIRED'
-                            conex = get_db_connection()
-                            with conex.cursor() as cursor:
-                                cursor.execute("UPDATE usuarios SET plan_status = 'EXPIRED' WHERE id = %s", (empresa_id,))
-                                conex.commit()
-                            conex.close()
-                        elif g_status == 'ACTIVE' and g_sub and now > g_sub:
-                            g_status = 'EXPIRED'
-                            conex = get_db_connection()
-                            with conex.cursor() as cursor:
-                                cursor.execute("UPDATE usuarios SET plan_status = 'EXPIRED' WHERE id = %s", (empresa_id,))
-                                conex.commit()
-                            conex.close()
+                    # 🛑 BLOQUEO O REDIRECCIÓN SI ESTÁ VENCIDO
+                    if g_status in ['EXPIRED', 'CANCELLED']:
+                        if rol == 'gerente':
+                            flash("⚠️ Tu período de prueba o suscripción ha vencido. Por favor realiza el pago para continuar.", "warning")
+                            session['user_id'] = user_id
+                            session['usuario_id'] = user_id
+                            session['email'] = user[1]
+                            session['rol'] = rol
+                            session['nombre'] = user[4]
+                            session['empresa_id'] = empresa_id
+                            return redirect(url_for('wompi.planes_pago'))
+                        else:
+                            flash("🚫 La suscripción de la empresa está vencida. Comunícate con el Gerente para renovar el servicio.", "danger")
+                            return render_template('login.html')
                             
-                        # 🛑 BLOQUEO O REDIRECCIÓN SI ESTÁ VENCIDO
-                        if g_status in ['EXPIRED', 'CANCELLED']:
-                            if rol == 'gerente':
-                                flash("⚠️ Tu período de prueba o suscripción ha vencido. Por favor realiza el pago para continuar.", "warning")
-                                session['user_id'] = user_id
-                                session['usuario_id'] = user_id
-                                session['email'] = user[1]
-                                session['rol'] = rol
-                                session['nombre'] = user[4]
-                                session['empresa_id'] = empresa_id
-                                return redirect(url_for('wompi.planes_pago'))
-                            else:
-                                flash("🚫 La suscripción de la empresa está vencida. Comunícate con el Gerente para renovar el servicio.", "danger")
-                                return render_template('login.html')
-                                
-                    # Si todo está OK, guardamos sesión y entra normal
-                    session['user_id'] = user_id
-                    session['usuario_id'] = user_id 
-                    session['email'] = user[1]
-                    session['rol'] = rol
-                    session['nombre'] = user[4]
-                    session['empresa_id'] = empresa_id
-                    
-                    print("DEBUG: ¡Login exitoso y suscripción válida!")
-                    return redirect(url_for('admin.dashboard'))
-                else:
-                    print("DEBUG: Contraseña incorrecta.")
-                    flash("Contraseña incorrecta.", 'danger')
+                # Si todo está OK, guardamos sesión y entra normal
+                session['user_id'] = user_id
+                session['usuario_id'] = user_id 
+                session['email'] = user[1]
+                session['rol'] = rol
+                session['nombre'] = user[4]
+                session['empresa_id'] = empresa_id
+                
+                print("DEBUG: ¡Login exitoso y suscripción válida!")
+                return redirect(url_for('admin.dashboard'))
+                
         except Exception as e:
             print(f"DEBUG ERROR EN LOGIN: {e}")
             flash(f"Error en el servidor: {e}", 'danger')
