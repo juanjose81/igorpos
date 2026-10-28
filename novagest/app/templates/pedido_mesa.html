@@ -34,6 +34,19 @@
       border-color: #38bdf8;
       transform: translateY(-2px);
     }
+    /* ESTILOS DE ALTO CONTRASTE CORREGIDOS PARA EL CONSUMO ACTUAL */
+    .table-dark {
+      background-color: transparent !important;
+      color: #f8fafc !important;
+    }
+    .table-dark th {
+      color: #38bdf8 !important;
+      border-bottom: 1px solid #334155;
+    }
+    .table-dark td {
+      color: #f8fafc !important;
+      border-color: #334155;
+    }
   </style>
 </head>
 <body>
@@ -52,7 +65,6 @@
           <i class="bi bi-trash3-fill"></i> Vaciar Mesa
         </button>
       </form>
-
       <form action="{{ url_for('caja_mesas.cambiar_mesa', id_mesa_origen=mesa.id) }}" method="POST" class="d-flex align-items-center gap-1">
         <select name="id_mesa_destino" class="form-select form-select-sm bg-dark text-white border-secondary">
           <option value="">Mover pedido a...</option>
@@ -99,7 +111,7 @@
                   <input type="hidden" name="cantidad" value="1">
                   <button type="submit" name="agregar_producto" class="btn btn-cat-prod w-100 p-3 rounded-3 h-100 d-flex flex-column justify-content-between">
                     <div>
-                      <div class="fw-bold text-truncate">{{ prod.nombre }}</div>
+                      <div class="fw-bold text-truncate text-white">{{ prod.nombre }}</div>
                       <small class="text-info d-block">{{ prod.destino }}</small>
                     </div>
                     <div class="fw-bold fs-5 text-warning mt-2">${{ "{:,.2f}".format(prod.precio) }}</div>
@@ -130,13 +142,13 @@
               <tbody>
                 {% if not pedidos %}
                   <tr>
-                    <td colspan="4" class="text-center text-muted py-4">No hay productos consumidos en esta mesa.</td>
+                    <td colspan="4" class="text-center text-light opacity-75 py-4">No hay productos consumidos en esta mesa.</td>
                   </tr>
                 {% else %}
                   {% for item in pedidos %}
                     <tr>
                       <td>
-                        <span class="fw-semibold">{{ item.producto }}</span>
+                        <span class="fw-semibold text-white">{{ item.producto }}</span>
                         <br>
                         <small class="badge 
                           {% if item.estado == 'Pendiente' %}badge-estado-pendiente
@@ -147,20 +159,20 @@
                         </small>
                       </td>
                       <td class="text-center">
-                        <!-- BOTONES + y - SIEMPRE DISPONIBLES PARA EL MESERO -->
+                        <!-- BOTONES + y - CLAROS Y VISIBLES -->
                         <div class="btn-group btn-group-sm">
                           <form action="{{ url_for('caja_mesas.disminuir_cantidad', id_item=item.id) }}" method="POST" class="d-inline">
-                            <button type="submit" class="btn btn-outline-secondary btn-sm">-</button>
+                            <button type="submit" class="btn btn-outline-light btn-sm fw-bold px-2">-</button>
                           </form>
-                          <span class="btn btn-dark btn-sm disabled fw-bold text-white">{{ item.cantidad }}</span>
+                          <span class="btn btn-dark btn-sm disabled fw-bold text-white border border-secondary px-2" style="opacity: 1;">{{ item.cantidad }}</span>
                           <form action="{{ url_for('caja_mesas.aumentar_cantidad', id_item=item.id) }}" method="POST" class="d-inline">
-                            <button type="submit" class="btn btn-outline-secondary btn-sm">+</button>
+                            <button type="submit" class="btn btn-outline-light btn-sm fw-bold px-2">+</button>
                           </form>
                         </div>
                       </td>
                       <td class="text-end fw-bold text-warning">${{ "{:,.2f}".format(item.subtotal) }}</td>
                       <td class="text-center">
-                        <!-- BOTÓN ELIMINAR SIEMPRE DISPONIBLE PARA CORRECCIONES -->
+                        <!-- BOTÓN ELIMINAR -->
                         <form action="{{ url_for('caja_mesas.eliminar_item', id_item=item.id) }}" method="POST">
                           <button type="submit" class="btn btn-outline-danger btn-sm" title="Eliminar / Corregir"><i class="bi bi-trash"></i></button>
                         </form>
@@ -174,7 +186,7 @@
         </div>
         <div class="border-top border-secondary pt-3 mt-3">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <span class="fs-4 fw-bold">TOTAL:</span>
+            <span class="fs-4 fw-bold text-white">TOTAL:</span>
             <span class="fs-3 fw-bold text-success">${{ "{:,.2f}".format(total) }}</span>
           </div>
           <div class="d-grid gap-2">
@@ -195,7 +207,7 @@
             {% if total > 0 %}
               {% set rol_actual = session.get('rol', '') | lower %}
               {% if rol_actual in ['gerente', 'administrador', 'admin'] %}
-              <button type="button" class="btn btn-success btn-lg w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#modalCobrar">
+              <button type="button" class="btn btn-success btn-lg w-100 fw-bold shadow" data-bs-toggle="modal" data-bs-target="#modalCobrar">
                 <i class="bi bi-cash-stack"></i> Cobrar / Facturar Mesa
               </button>
               {% endif %}
