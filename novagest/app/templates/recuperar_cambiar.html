@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Contraseña - IGOR POS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background-color: #1e293b; border: 1px solid #334155; padding: 40px; border-radius: 12px; width: 100%; max-width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        h2 { color: #38bdf8; margin-bottom: 8px; text-align: center; font-size: 1.5rem; }
+        p { color: #94a3b8; font-size: 0.9rem; text-align: center; margin-bottom: 25px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #cbd5e1; }
+        .form-group input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; font-size: 1rem; outline: none; }
+        .form-group input:focus { border-color: #38bdf8; }
+        .btn-primary { background: #22c55e; color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 1rem; margin-top: 10px; }
+        .btn-primary:hover { background: #16a34a; }
+        .alert { padding: 12px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; text-align: center; font-size: 0.9rem; }
+        .alert-danger { background-color: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🔒 Nueva Contraseña</h2>
+        <p>Escribe tu nueva clave de acceso</p>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="form-group">
+                <label>Nueva Contraseña:</label>
+                <input type="password" name="nueva_password" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn-primary">Guardar Nueva Clave 🚀</button>
+        </form>
+    </div>
+</body>
+</html>

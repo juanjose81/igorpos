@@ -3,8 +3,16 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg
 from app.database import get_db_connection
+from itsdangerous import URLSafeTimedSerializer
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
 
 auth_bp = Blueprint('auth', __name__)
+
+# Serializador para tokens seguros de recuperación (expiran en 15 minutos)
+serializer = URLSafeTimedSerializer('clave_super_secreta_igorpos')
 
 # Función automática para crear la tabla y asegurar sus columnas si ya existe
 def asegurar_tabla():
@@ -198,3 +206,94 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for('auth.login'))
+
+# --- NUEVAS RUTAS DE RECUPERACIÓN DE CONTRASEÑA (100% GRATIS Y SEGURA) ---
+
+@auth_bp.route('/recuperar-password', methods=['GET', 'POST'])
+def solicitar_recuperacion():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        
+        try:
+            conex = get_db_connection()
+            with conex.cursor() as cursor:
+                # Validamos que el correo exista y sea Gerente / Administrador
+                cursor.execute("""
+                    SELECT id, nombre, rol FROM usuarios 
+                    WHERE LOWER(email) = LOWER(%s) 
+                    AND LOWER(rol) IN ('gerente', 'administrador', 'admin');
+                """, (email,))
+                usuario = cursor.fetchone()
+            conex.close()
+            
+            if usuario:
+                token = serializer.dumps(email, salt='recuperar-clave-salt')
+                link_recuperacion = url_for('auth.restablecer_password', token=token, _external=True)
+                
+                remitente = os.getenv('MAIL_USERNAME')
+                password_app = os.getenv('MAIL_PASSWORD')
+                
+                if remitente and password_app:
+                    msg = MIMEMultipart()
+                    msg['From'] = remitente
+                    msg['To'] = email
+                    msg['Subject'] = '🔑 Recuperación de Contraseña - IGOR POS'
+                    
+                    cuerpo = f"""
+                    Hola, {usuario[1]}:
+                    
+                    Has solicitado restablecer tu contraseña de Gerente en IGOR POS. 
+                    Haz clic en el siguiente enlace (expira en 15 minutos):
+                    
+                    {link_recuperacion}
+                    
+                    Si tú no pediste esto, ignora este mensaje.
+                    """
+                    msg.attach(MIMEText(cuerpo, 'plain'))
+                    
+                    servidor = smtplib.SMTP('smtp.gmail.com', 587)
+                    servidor.starttls()
+                    servidor.login(remitente, password_app)
+                    servidor.sendmail(remitente, email, msg.as_string())
+                    servidor.quit()
+                    
+            flash('Si el correo está registrado como Gerente, se han enviado las instrucciones a su bandeja.', 'success')
+            return redirect(url_for('auth.solicitar_recuperacion'))
+            
+        except Exception as e:
+            flash(f'Error al procesar la solicitud: {e}', 'danger')
+            
+    return render_template('recuperar_solicitud.html')
+
+@auth_bp.route('/restablecer-password/<token>', methods=['GET', 'POST'])
+def restablecer_password(token):
+    try:
+        email = serializer.loads(token, salt='recuperar-clave-salt', max_age=900)
+    except Exception:
+        flash('El enlace de recuperación es inválido o ya ha expirado.', 'danger')
+        return redirect(url_for('auth.solicitar_recuperacion'))
+        
+    if request.method == 'POST':
+        nueva_password = request.form.get('nueva_password', '').strip()
+        if not nueva_password:
+            flash('La contraseña no puede estar vacía.', 'danger')
+            return redirect(request.url)
+            
+        try:
+            password_hash = generate_password_hash(nueva_password)
+            conex = get_db_connection()
+            with conex.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE usuarios 
+                    SET password = %s, password_hash = %s 
+                    WHERE LOWER(email) = LOWER(%s);
+                """, (nueva_password, password_hash, email))
+                conex.commit()
+            conex.close()
+            
+            flash('¡Contraseña restablecida con éxito! Ya puedes iniciar sesión.', 'success')
+            return redirect(url_for('auth.login'))
+        except Exception as e:
+            flash(f'Error al actualizar la contraseña: {e}', 'danger')
+            
+    return render_template('recuperar_cambiar.html')
