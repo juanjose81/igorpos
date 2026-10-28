@@ -228,6 +228,7 @@
     </div>
   </div>
 </div>
+
 <!-- Modal de Cobro y Facturación -->
 <div class="modal fade" id="modalCobrar" tabindex="-1" aria-labelledby="modalCobrarLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -246,6 +247,7 @@
             <h2 class="text-success fw-bold m-0" id="montoTotalPagarDisplay">${{ "{:,.2f}".format(total) }}</h2>
             <input type="hidden" id="inputTotalVenta" value="{{ total }}">
           </div>
+          
           <div class="mb-3">
             <label class="form-label fw-semibold">Tipo de Pago</label>
             <select name="tipo_pago" id="selectTipoPago" class="form-select form-select-lg">
@@ -254,6 +256,7 @@
               <option value="Tarjeta débito/crédito">Tarjeta débito/crédito</option>
             </select>
           </div>
+          
           <div id="seccionEfectivo" class="row g-2 mb-3">
             <div class="col-12 col-md-6">
               <label class="form-label fw-semibold">Efectivo Recibido ($)</label>
@@ -265,9 +268,10 @@
               <input type="text" id="inputVueltosDisplay" class="form-control form-control-lg bg-light text-primary fw-bold" value="$0.00" readonly>
             </div>
           </div>
+          
           <div class="p-3 bg-light rounded-3 border mb-3">
             <div class="form-check form-switch mb-2 ps-5">
-              <input class="form-check-input ms--4" type="checkbox" name="desea_factura_impresa" value="si" id="checkFacturaImpresa" checked>
+              <input class="form-check-input ms--4" type="checkbox" name="desea_factura_impresa" value="si" id="checkFacturaImpresa" checked onchange="toggleDatosCliente()">
               <label class="form-check-label fw-semibold" for="checkFacturaImpresa">
                 🖨️ Generar Factura en PDF / Imprimir
               </label>
@@ -279,15 +283,24 @@
               </label>
             </div>
           </div>
-          <div id="seccionDatosCliente" style="display: none;" class="p-3 bg-light rounded-3 border mb-3">
-            <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-person-lines-fill"></i> Datos del Cliente</h6>
+
+          <!-- 📋 SECCIÓN DINÁMICA DE DATOS DEL CLIENTE (NIT/CÉDULA, CORREO, TELÉFONO) -->
+          <div id="seccionDatosCliente" style="display: block;" class="p-3 bg-light rounded-3 border mb-3">
+            <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-person-lines-fill"></i> Datos Fiscales del Cliente</h6>
             <div class="mb-2">
-              <input type="text" name="cliente_nombre" class="form-control" placeholder="Nombre del cliente">
+              <input type="text" name="cliente_nombre" class="form-control" placeholder="Nombre o Razón Social">
+            </div>
+            <div class="mb-2">
+              <input type="text" name="cliente_nit" class="form-control" placeholder="NIT / Cédula de Ciudadanía">
+            </div>
+            <div class="mb-2">
+              <input type="email" name="cliente_correo" class="form-control" placeholder="Correo Electrónico (Opcional)">
             </div>
             <div class="mb-0">
-              <input type="text" name="cliente_telefono" class="form-control" placeholder="Número de WhatsApp (Ej: 3001234567)">
+              <input type="text" name="cliente_telefono" class="form-control" placeholder="WhatsApp (Ej: 3001234567)">
             </div>
           </div>
+
         </div>
         <div class="modal-footer border-0 p-3 bg-light rounded-bottom-4">
           <button type="button" class="btn btn-secondary px-4 rounded-3" data-bs-dismiss="modal">Cancelar</button>
@@ -299,6 +312,7 @@
     </div>
   </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 // Filtrado de productos en tiempo real por nombre
@@ -327,12 +341,19 @@ function calcularVueltos() {
   }).format(vueltos);
 }
 function toggleDatosCliente() {
-  const check = document.getElementById('checkFacturaWA');
+  const checkImpresora = document.getElementById('checkFacturaImpresa');
+  const checkWA = document.getElementById('checkFacturaWA');
   const seccion = document.getElementById('seccionDatosCliente');
-  seccion.style.display = check.checked ? 'block' : 'none';
+  
+  if (checkImpresora.checked || checkWA.checked) {
+    seccion.style.display = 'block';
+  } else {
+    seccion.style.display = 'none';
+  }
 }
 document.addEventListener('DOMContentLoaded', function() {
   calcularVueltos();
+  toggleDatosCliente();
 });
 </script>
 </body>
