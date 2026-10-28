@@ -33,18 +33,21 @@
         aside h2 { color: #38bdf8; font-size: 1.5rem; margin-bottom: 25px; text-align: center; }
         aside a { color: #94a3b8; text-decoration: none; padding: 10px 15px; border-radius: 8px; margin-bottom: 6px; font-weight: 500; transition: 0.2s; display: block; font-size: 0.95rem; }
         aside a:hover, aside a.active { background-color: #0284c7; color: #fff; }
+        
+        /* CONTENEDOR PRINCIPAL OPTIMIZADO PARA ALTO CONTRASTE */
         main {
             flex: 1;
             padding: 30px;
             overflow-y: auto;
-            background-color: #f4f6f9;
-            color: #1e293b;
+            background-color: #0f172a;
+            color: #f8fafc;
         }
         .main-card {
             border: none;
             border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            background: #ffffff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            background: #1e293b;
+            color: #f8fafc;
             margin-bottom: 25px;
         }
         .toggle-btn {
@@ -63,15 +66,40 @@
         }
         .toggle-btn:hover { background: #334155; color: #fff; }
         
+        /* TARJETAS DE MESA EN MODO OSCURO HIGH-CONTRAST */
         .mesa-card {
             border-radius: 12px;
             transition: 0.2s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            background: #ffffff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            background: #1e293b !important;
+            color: #f8fafc !important;
+            border: 1px solid #334155;
         }
         .mesa-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+            border-color: #38bdf8;
+        }
+        
+        /* MODAL ADAPTADO AL DISEÑO OSCURO */
+        .modal-content {
+            background-color: #1e293b;
+            color: #f8fafc;
+            border: 1px solid #334155;
+        }
+        .modal-header, .modal-footer {
+            border-color: #334155;
+        }
+        .form-control {
+            background-color: #0f172a;
+            border: 1px solid #475569;
+            color: #f8fafc;
+        }
+        .form-control:focus {
+            background-color: #0f172a;
+            color: #f8fafc;
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.25);
         }
     </style>
 </head>
@@ -125,8 +153,8 @@
         <div class="container-fluid px-0">
             <div class="d-flex align-items-center mb-4">
                 <div>
-                    <h3 class="fw-bold mb-1 text-dark"><i class="fa-solid fa-utensils me-2 text-primary"></i>Control de Mesas — IGOR POS</h3>
-                    <p class="text-muted mb-0">Usuario activo: <strong>{{ usuario_actual }}</strong> ({{ session.get('rol', 'Auxiliar') }})</p>
+                    <h3 class="fw-bold mb-1 text-white"><i class="fa-solid fa-utensils me-2 text-info"></i>Control de Mesas — IGOR POS</h3>
+                    <p class="text-light opacity-75 mb-0">Usuario activo: <strong class="text-white">{{ usuario_actual }}</strong> ({{ session.get('rol', 'Auxiliar') }})</p>
                 </div>
             </div>
 
@@ -135,29 +163,29 @@
                 {% if mesas %}
                     {% for m in mesas %}
                     <div class="col-xl-3 col-lg-4 col-md-6">
-                        <div class="card mesa-card border-0 shadow-sm p-3 {% if m.estado == 'Ocupada' %}border-start border-4 border-danger{% else %}border-start border-4 border-success{% endif %}">
+                        <div class="card mesa-card p-3 {% if m.estado == 'Ocupada' %}border-start border-4 border-danger{% else %}border-start border-4 border-success{% endif %}">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h5 class="fw-bold mb-0 text-dark">{{ m.numero_mesa }}</h5>
+                                <h5 class="fw-bold mb-0 text-white">{{ m.numero_mesa }}</h5>
                                 <span class="badge {% if m.estado == 'Ocupada' %}bg-danger{% else %}bg-success{% endif %}">
                                     {{ m.estado }}
                                 </span>
                             </div>
-                            <p class="text-muted small mb-2">
+                            <p class="text-light opacity-75 small mb-2">
                                 {% if m.estado == 'Ocupada' %}
-                                    Atiende: {{ m.mesero_atendiendo }}
+                                    Atiende: <span class="text-white fw-bold">{{ m.mesero_atendiendo }}</span>
                                 {% else %}
-                                    Disponible
+                                    <span class="text-success fw-bold">Disponible</span>
                                 {% endif %}
                             </p>
-                            <h4 class="fw-bold text-dark mb-3">${{ "{:,.2f}".format(m.total_acumulado) }}</h4>
+                            <h4 class="fw-bold text-info mb-3">${{ "{:,.2f}".format(m.total_acumulado) }}</h4>
                             
                             <div class="d-grid gap-2">
                                 {% if m.estado == 'Ocupada' %}
-                                    <a href="{{ url_for('caja_mesas.abrir_pedido', id_mesa=m.id) }}" class="btn btn-danger btn-sm fw-bold py-2">
+                                    <a href="{{ url_for('caja_mesas.abrir_pedido', id_mesa=m.id) }}" class="btn btn-danger btn-sm fw-bold py-2 shadow-sm">
                                         <i class="fa-solid fa-eye me-1"></i> Ver / Detalle Mesa
                                     </a>
                                 {% else %}
-                                    <a href="{{ url_for('caja_mesas.abrir_pedido', id_mesa=m.id) }}" class="btn btn-outline-primary btn-sm fw-bold py-2">
+                                    <a href="{{ url_for('caja_mesas.abrir_pedido', id_mesa=m.id) }}" class="btn btn-outline-info btn-sm fw-bold py-2">
                                         <i class="fa-solid fa-folder-open me-1"></i> Abrir Mesa
                                     </a>
                                 {% endif %}
@@ -175,7 +203,7 @@
                     {% endfor %}
                 {% else %}
                     <div class="col-12 text-center py-5">
-                        <p class="text-muted fs-5">No hay mesas configuradas en el sistema.</p>
+                        <p class="text-light opacity-75 fs-5">No hay mesas configuradas en el sistema.</p>
                     </div>
                 {% endif %}
             </div>
@@ -188,16 +216,16 @@
             <div class="modal-content">
                 <form method="POST">
                     <div class="modal-header">
-                        <h5 class="modal-title fw-bold">Agregar Nuevas Mesas</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <h5 class="modal-title fw-bold text-white">Agregar Nuevas Mesas</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Cantidad de mesas a generar:</label>
+                            <label class="form-label fw-bold text-light">Cantidad de mesas a generar:</label>
                             <input type="number" name="cantidad" min="1" max="20" value="1" class="form-control" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold">O Nombre específico de la mesa (Opcional):</label>
+                            <label class="form-label fw-bold text-light">O Nombre específico de la mesa (Opcional):</label>
                             <input type="text" name="nombre_mesa" placeholder="Ej: Mesa VIP 1" class="form-control">
                         </div>
                     </div>
