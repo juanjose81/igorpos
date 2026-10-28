@@ -291,6 +291,42 @@ def usuarios():
         
     return render_template('admin.html', usuarios=lista_usuarios, seccion='usuarios')
 
+# --- CAMBIAR CLAVE DE EMPLEADO (Exclusivo Gerente) ---
+@admin_bp.route('/admin/usuarios/cambiar_clave/<int:usuario_id>', methods=['POST'])
+def cambiar_clave_empleado(usuario_id):
+    user_id = session.get('usuario_id') or session.get('user_id')
+    if not user_id:
+        return redirect('/login')
+        
+    rol_usuario = str(session.get('rol', '')).lower()
+    if rol_usuario not in ['gerente', 'administrador', 'admin']:
+        flash('No tienes permisos para realizar esta acción.', 'danger')
+        return redirect(url_for('admin.usuarios'))
+        
+    empresa_id = session.get('empresa_id') or user_id
+    nueva_password = request.form.get('nueva_password', '').strip()
+    
+    if not nueva_password:
+        flash('La nueva contraseña no puede estar vacía.', 'danger')
+        return redirect(url_for('admin.usuarios'))
+        
+    try:
+        password_hash = generate_password_hash(nueva_password)
+        conex = get_db_connection()
+        with conex.cursor() as cursor:
+            cursor.execute("""
+                UPDATE usuarios 
+                SET password = %s, password_hash = %s 
+                WHERE id = %s AND empresa_id = %s;
+            """, (nueva_password, password_hash, usuario_id, empresa_id))
+            conex.commit()
+        conex.close()
+        flash('¡Contraseña del empleado actualizada con éxito!', 'success')
+    except Exception as e:
+        flash(f'Error al actualizar la contraseña: {e}', 'danger')
+        
+    return redirect(url_for('admin.usuarios'))
+
 # --- PANTALLA DE COCINA CON TIMESTAMP EXACTO EN MILISEGUNDOS ---
 @admin_bp.route('/admin/cocina')
 def cocina():

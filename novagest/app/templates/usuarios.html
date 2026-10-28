@@ -25,11 +25,8 @@
     </script>
 </head>
 <body>
-
     <a href="{{ url_for('caja_mesas.gestionar_mesas') }}" class="btn-volver">⬅️ Volver a Mesas</a>
-
     <h1>👥 Control Total de Usuarios y Monitor de Conexiones (Solo Gerente)</h1>
-
     <div class="grid-container">
         <!-- Registro Infinito de Usuarios -->
         <div class="card">
@@ -37,13 +34,10 @@
             <form method="POST">
                 <label>Nombre Completo del Trabajador:</label>
                 <input type="text" name="nombre" placeholder="Ej: Carlos Pérez" required>
-
                 <label>Usuario (para Login):</label>
                 <input type="text" name="usuario" placeholder="Ej: cperez" required>
-
                 <label>Contraseña Acceso:</label>
                 <input type="password" name="password" required>
-
                 <label>Rol Asignado:</label>
                 <select id="rolSelect" name="rol" onchange="togglePinInput()" required>
                     <option value="Auxiliar">Auxiliar de Servicio (Mesero)</option>
@@ -51,34 +45,27 @@
                     <option value="Cajero">Cajero Principal</option>
                     <option value="Cocina">Cocina / Bar</option>
                 </select>
-
                 <div id="pinContainer" style="display: none;">
                     <label style="color: #e63946;">🔒 PIN Único de Autorización (Gerente):</label>
                     <input type="password" name="pin" placeholder="Ej: 1234">
                 </div>
-
                 <button type="submit">Guardar y Habilitar en Sistema 🚀</button>
             </form>
         </div>
-
         <!-- Módulo Cambio PIN -->
         <div class="card" style="border: 2px solid #e63946;">
             <h2 style="color: #e63946;">🔑 Cambiar PIN de Gerente</h2>
             <form action="{{ url_for('caja_mesas.cambiar_pin_gerente') }}" method="POST">
                 <label>Usuario Gerente:</label>
                 <input type="text" name="usuario_gerente" required>
-
                 <label>Contraseña Gerente:</label>
                 <input type="password" name="password_gerente" required>
-
                 <label>Nuevo PIN:</label>
                 <input type="password" name="nuevo_pin" required>
-
                 <button type="submit" style="background-color: #e63946;">Actualizar PIN 🔒</button>
             </form>
         </div>
     </div>
-
     <!-- Monitor de Usuarios Registrados y Conectados -->
     <div class="card" style="margin-top: 20px;">
         <h2>📡 Monitor de Usuarios y Estado en Tiempo Real</h2>
@@ -91,6 +78,7 @@
                     <th>Rol</th>
                     <th>Estado Conexión</th>
                     <th>Último Ingreso</th>
+                    <th style="text-align: center;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -108,11 +96,42 @@
                             {% endif %}
                         </td>
                         <td>{{ u.ultima_conexion }}</td>
+                        <td style="text-align: center;">
+                            <button type="button" onclick="abrirModalClave('{{ u.id }}', '{{ u.nombre }}')" style="background-color: #fca311; color: #0b132b; padding: 6px 12px; font-size: 0.9em; width: auto; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                                🔑 Cambiar Clave
+                            </button>
+                        </td>
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 
+    <!-- MODAL PARA CAMBIAR CLAVE DE EMPLEADO -->
+    <div id="modalCambiarClave" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: #1c2541; padding: 30px; border-radius: 10px; width: 90%; max-width: 400px; border: 2px solid #48cae4; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+            <h3 style="margin-top: 0; color: #48cae4;">🔑 Cambiar Clave a: <span id="nombreEmpleado" style="color: white;"></span></h3>
+            <form id="formCambiarClave" method="POST">
+                <label style="display: block; margin-bottom: 5px;">Nueva Contraseña:</label>
+                <input type="password" name="nueva_password" placeholder="Escribe la nueva clave" required style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #48cae4; background: #0b132b; color: white;">
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" style="background-color: #2a9d8f; flex: 1;">Guardar Clave</button>
+                    <button type="button" onclick="cerrarModalClave()" style="background-color: #e63946; flex: 1;">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    function abrirModalClave(id, nombre) {
+        document.getElementById('nombreEmpleado').innerText = nombre;
+        document.getElementById('formCambiarClave').action = "/admin/usuarios/cambiar_clave/" + id;
+        document.getElementById('modalCambiarClave').style.display = "flex";
+    }
+
+    function cerrarModalClave() {
+        document.getElementById('modalCambiarClave').style.display = "none";
+    }
+    </script>
 </body>
 </html>
