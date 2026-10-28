@@ -207,8 +207,7 @@ def logout():
     session.clear()
     return redirect(url_for('auth.login'))
 
-# --- NUEVAS RUTAS DE RECUPERACIÓN DE CONTRASEÑA (100% GRATIS Y SEGURA) ---
-
+# --- RUTAS DE RECUPERACIÓN DE CONTRASEÑA (BLINDADAS CONTRA ERROR 502) ---
 @auth_bp.route('/recuperar-password', methods=['GET', 'POST'])
 def solicitar_recuperacion():
     if request.method == 'POST':
@@ -234,34 +233,39 @@ def solicitar_recuperacion():
                 password_app = os.getenv('MAIL_PASSWORD')
                 
                 if remitente and password_app:
-                    msg = MIMEMultipart()
-                    msg['From'] = remitente
-                    msg['To'] = email
-                    msg['Subject'] = '🔑 Recuperación de Contraseña - IGOR POS'
-                    
-                    cuerpo = f"""
-                    Hola, {usuario[1]}:
-                    
-                    Has solicitado restablecer tu contraseña de Gerente en IGOR POS. 
-                    Haz clic en el siguiente enlace (expira en 15 minutos):
-                    
-                    {link_recuperacion}
-                    
-                    Si tú no pediste esto, ignora este mensaje.
-                    """
-                    msg.attach(MIMEText(cuerpo, 'plain'))
-                    
-                    servidor = smtplib.SMTP('smtp.gmail.com', 587)
-                    servidor.starttls()
-                    servidor.login(remitente, password_app)
-                    servidor.sendmail(remitente, email, msg.as_string())
-                    servidor.quit()
-                    
+                    try:
+                        msg = MIMEMultipart()
+                        msg['From'] = remitente
+                        msg['To'] = email
+                        msg['Subject'] = '🔑 Recuperación de Contraseña - IGOR POS'
+                        
+                        cuerpo = f"""
+                        Hola, {usuario[1]}:
+                        
+                        Has solicitado restablecer tu contraseña de Gerente en IGOR POS. 
+                        Haz clic en el siguiente enlace (expira en 15 minutos):
+                        
+                        {link_recuperacion}
+                        
+                        Si tú no pediste esto, ignora este mensaje.
+                        """
+                        msg.attach(MIMEText(cuerpo, 'plain'))
+                        
+                        # Conexión SMTP con timeout de 10s para evitar cuelgues (Error 502)
+                        servidor = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)
+                        servidor.starttls()
+                        servidor.login(remitente, password_app)
+                        servidor.sendmail(remitente, email, msg.as_string())
+                        servidor.quit()
+                    except Exception as mail_err:
+                        print(f"DEBUG ERROR SMTP (Correo no enviado pero app protegida): {mail_err}")
+                
             flash('Si el correo está registrado como Gerente, se han enviado las instrucciones a su bandeja.', 'success')
             return redirect(url_for('auth.solicitar_recuperacion'))
             
         except Exception as e:
-            flash(f'Error al procesar la solicitud: {e}', 'danger')
+            print(f"DEBUG ERROR GENERAL RECUPERACION: {e}")
+            flash(f'Error al procesar la solicitud. Intenta de nuevo.', 'danger')
             
     return render_template('recuperar_solicitud.html')
 
