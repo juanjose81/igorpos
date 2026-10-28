@@ -234,6 +234,11 @@ def solicitar_recuperacion():
                 
                 if remitente and password_app:
                     try:
+                        # Usamos un timeout estricto de 2 segundos para evitar que la app se congele
+                        servidor = smtplib.SMTP('smtp.gmail.com', 587, timeout=2)
+                        servidor.starttls()
+                        servidor.login(remitente, password_app)
+                        
                         msg = MIMEMultipart()
                         msg['From'] = remitente
                         msg['To'] = email
@@ -250,22 +255,20 @@ def solicitar_recuperacion():
                         Si tú no pediste esto, ignora este mensaje.
                         """
                         msg.attach(MIMEText(cuerpo, 'plain'))
-                        
-                        # Conexión SMTP con timeout de 10s para evitar cuelgues (Error 502)
-                        servidor = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)
-                        servidor.starttls()
-                        servidor.login(remitente, password_app)
                         servidor.sendmail(remitente, email, msg.as_string())
                         servidor.quit()
                     except Exception as mail_err:
-                        print(f"DEBUG ERROR SMTP (Correo no enviado pero app protegida): {mail_err}")
+                        # Si Render bloquea el puerto 587, capturamos el error aquí mismo 
+                        # para que la aplicación NUNCA arroje error 502 a los usuarios.
+                        print(f"AVISO SMTP BLOQUEADO/TIMEOUT EN RENDER: {mail_err}")
                 
             flash('Si el correo está registrado como Gerente, se han enviado las instrucciones a su bandeja.', 'success')
             return redirect(url_for('auth.solicitar_recuperacion'))
             
         except Exception as e:
             print(f"DEBUG ERROR GENERAL RECUPERACION: {e}")
-            flash(f'Error al procesar la solicitud. Intenta de nuevo.', 'danger')
+            flash('Si el correo está registrado como Gerente, se han enviado las instrucciones a su bandeja.', 'success')
+            return redirect(url_for('auth.solicitar_recuperacion'))
             
     return render_template('recuperar_solicitud.html')
 
