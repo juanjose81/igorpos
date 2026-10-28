@@ -5,7 +5,6 @@ from app.dian_service import enviar_factura_dian_api
 from app.database import get_db_connection
 
 caja_mesas_bp = Blueprint('caja_mesas', __name__)
-
 NUMERO_EMISOR_POS = "3213860752"
 
 def asegurar_tablas_globales(cursor, conex):
@@ -87,10 +86,6 @@ def asegurar_tablas_globales(cursor, conex):
     conex.commit()
 
 def sincronizar_estados_mesas(cursor, conex, empresa_id):
-    """
-    🧹 FUNCIÓN CLAVE: Auto-corrige las mesas para que si no tienen consumos activos,
-    pasan automáticamente a estado 'Disponible'.
-    """
     cursor.execute("""
         UPDATE mesas 
         SET estado = 'Disponible', mesero_atendiendo = 'Sin asignar'
@@ -165,10 +160,8 @@ def gestionar_mesas():
     conex = get_db_connection()
     cursor = conex.cursor()
     asegurar_tablas_globales(cursor, conex)
-    
     empresa_id = obtener_empresa_id_seguro(cursor)
     
-    # 🧹 Auto-Sincronización de mesas vacías
     sincronizar_estados_mesas(cursor, conex, empresa_id)
     
     cursor.execute("SELECT id, monto_inicial FROM caja_diaria WHERE empresa_id = %s AND estado = 'Abierta' ORDER BY id DESC LIMIT 1;", (empresa_id,))
@@ -415,7 +408,6 @@ def abrir_pedido(id_mesa):
         except Exception:
             conex.rollback()
             
-    # 🧹 Auto-Sincronización antes de cargar la vista
     sincronizar_estados_mesas(cursor, conex, empresa_id)
         
     cursor.execute("SELECT id, numero_mesa, estado, mesero_atendiendo FROM mesas WHERE id = %s AND empresa_id = %s;", (id_mesa, empresa_id))
@@ -600,7 +592,6 @@ def disminuir_cantidad(id_item):
             cursor.execute("DELETE FROM pedidos_mesa WHERE id = %s AND empresa_id = %s;", (id_item, empresa_id))
         conex.commit()
         
-        # 🧹 Auto-limpieza tras eliminar ítem
         sincronizar_estados_mesas(cursor, conex, empresa_id)
         
     cursor.close()
@@ -621,7 +612,6 @@ def eliminar_item(id_item):
         cursor.execute("DELETE FROM pedidos_mesa WHERE id = %s AND empresa_id = %s;", (id_item, empresa_id))
         conex.commit()
         
-        # 🧹 Auto-limpieza si era el único ítem
         sincronizar_estados_mesas(cursor, conex, empresa_id)
     cursor.close()
     conex.close()
@@ -666,7 +656,11 @@ def cerrar_facturar_mesa(id_mesa):
         
     tipo_pago = request.form.get('tipo_pago', 'Efectivo')
     efectivo_recibido = float(request.form.get('efectivo_recibido', 0))
+    
+    # Capturamos si desea factura o no
+    desea_factura_impresa = request.form.get('desea_factura_impresa') == 'si'
     es_electronica = request.form.get('es_electronica') == 'si'
+    
     cliente_nombre = request.form.get('cliente_nombre', '').strip()
     cliente_nit = request.form.get('cliente_nit', '').strip()
     cliente_telefono = request.form.get('cliente_telefono', '').strip()
@@ -691,12 +685,12 @@ def cerrar_facturar_mesa(id_mesa):
     datos_mesa = cursor.fetchone()
     num_mesa_str = datos_mesa[0]
     
-    # 🛡️ Blindaje: Si la mesa estaba como 'Sin asignar', le asigna el nombre del usuario logueado en caja
     usuario_sesion = session.get('nombre') or session.get('usuario') or 'igor (gerente)'
     mesero_atendio = datos_mesa[1]
     if not mesero_atendio or mesero_atendio.strip() == '' or mesero_atendio == 'Sin asignar':
         mesero_atendio = usuario_sesion
     
+    # 📝 REGISTRO OBLIGATORIO EN BASE DE DATOS (PARA LA DIAN / CAJA)
     cursor.execute("""
         INSERT INTO historial_ventas (empresa_id, id_mesa, numero_mesa, total_venta, tipo_pago, efectivo_recibido, devueltas, atendido_por, fecha_venta)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW()) RETURNING id;
@@ -723,7 +717,7 @@ def cerrar_facturar_mesa(id_mesa):
         dian_result = enviar_factura_dian_api(factura_data, es_demo=True)
     
     link_wa = None
-    if cliente_telefono:
+    if cliente_telefono and es_electronica:
         link_wa = generar_enlace_whatsapp(
             cliente_telefono, 
             cliente_nombre or 'Cliente General', 
@@ -744,10 +738,16 @@ def cerrar_facturar_mesa(id_mesa):
     cursor.close()
     conex.close()
     
+    # 🎛️ Si no marcó el checkbox de factura, NO imprime ni abre PDFs, guarda la venta limpia en BD
+    if not desea_factura_impresa and not es_electronica:
+        flash(f'✅ Venta #${id_venta} registrada por ${total_venta:,.2f} correctamente.', 'success')
+        return redirect(url_for('caja_mesas.gestionar_mesas'))
+
     if dian_result:
         session['dian_result_temp'] = dian_result
     if link_wa:
         return redirect(url_for('caja_mesas.imprimir_ticket', id_venta=id_venta, link_wa=link_wa))
+        
     return redirect(url_for('caja_mesas.imprimir_ticket', id_venta=id_venta))
 
 @caja_mesas_bp.route('/admin/caja/apertura', methods=['GET', 'POST'])
@@ -788,7 +788,7 @@ def apertura_caja():
                 nombres_mesas = ", ".join([str(m[0]) for m in mesas_activas_raw])
                 cursor.close()
                 conex.close()
-                flash(f'⚠️ ¡No se puede cerrar la caja! Las siguientes mesas aún están ocupadas o tienen consumos pendientes: [{nombres_mesas}]. Factúralas o revísalas antes de cerrar turno.', 'danger')
+                flash(f'⚠️ ¡No se puede cerrar la caja! Mesas ocupadas: [{nombres_mesas}].', 'danger')
                 return redirect(url_for('caja_mesas.apertura_caja'))
                 
             cursor.execute("SELECT fecha_apertura, monto_inicial FROM caja_diaria WHERE id = %s AND empresa_id = %s;", (id_caja, empresa_id))
@@ -902,18 +902,18 @@ def reset_emergencia():
                 DELETE FROM pedidos_mesa 
                 WHERE empresa_id = %s AND estado = 'Facturado' AND id_venta_asociada NOT IN (SELECT id FROM historial_ventas WHERE empresa_id = %s);
             """, (empresa_id, empresa_id))
-            flash(f'⚡ Registros entre {fecha_inicio} y {fecha_fin} purgados con éxito.', 'success')
+            flash(f'⚡ Registros purgados con éxito.', 'success')
         else:
             cursor.execute("DELETE FROM pedidos_mesa WHERE empresa_id = %s;", (empresa_id,))
             cursor.execute("DELETE FROM historial_ventas WHERE empresa_id = %s;", (empresa_id,))
             cursor.execute("UPDATE caja_diaria SET estado = 'Cerrada' WHERE empresa_id = %s AND estado = 'Abierta';", (empresa_id,))
             cursor.execute("UPDATE mesas SET estado = 'Disponible', mesero_atendiendo = 'Sin asignar' WHERE empresa_id = %s;", (empresa_id,))
-            flash('⚡ ¡Sistema reiniciado y purgado para esta empresa! Todas las mesas están libres y listas.', 'success')
+            flash('⚡ ¡Sistema reiniciado con éxito!', 'success')
         conex.commit()
         cursor.close()
         conex.close()
     except Exception as e:
-        flash(f'❌ Error al ejecutar el reseteo: {e}', 'danger')
+        flash(f'❌ Error: {e}', 'danger')
     return redirect(url_for('caja_mesas.apertura_caja'))
 
 @caja_mesas_bp.route('/admin/imprimir-ticket/<int:id_venta>')
@@ -972,7 +972,10 @@ def imprimir_ticket(id_venta):
         })
     cursor.close()
     conex.close()
-    url_qr = f"https://igorpos.com/verificar/{id_venta}"
+    
+    # URL real del host activo para el código QR
+    base_url = request.host_url.rstrip('/')
+    url_qr = f"{base_url}/admin/verificar-factura/{id_venta}"
     
     return render_template(
         'ticket_factura.html', 
@@ -982,3 +985,44 @@ def imprimir_ticket(id_venta):
         link_wa=link_wa,
         factura_electronica=factura_electronica
     )
+
+# 🌐 Ruta pública para verificar la factura al escanear el QR
+@caja_mesas_bp.route('/admin/verificar-factura/<int:id_venta>')
+def verificar_factura_qr(id_venta):
+    conex = get_db_connection()
+    cursor = conex.cursor()
+    asegurar_tablas_globales(cursor, conex)
+    
+    cursor.execute("""
+        SELECT id, numero_mesa, total_venta, tipo_pago, efectivo_recibido, devueltas, atendido_por, fecha_venta, empresa_id
+        FROM historial_ventas WHERE id = %s;
+    """, (id_venta,))
+    v = cursor.fetchone()
+    if not v:
+        cursor.close()
+        conex.close()
+        return render_template('acceso_restringido.html'), 404
+        
+    venta = {
+        'id': v[0],
+        'numero_mesa': v[1],
+        'total_venta': float(v[2]),
+        'tipo_pago': v[3],
+        'efectivo_recibido': float(v[4]),
+        'devueltas': float(v[5]),
+        'atendido_por': v[6],
+        'fecha_venta': v[7]
+    }
+    
+    cursor.execute("""
+        SELECT producto, cantidad, precio, (precio * cantidad) as subtotal
+        FROM pedidos_mesa 
+        WHERE id_venta_asociada = %s;
+    """, (id_venta,))
+    items_raw = cursor.fetchall()
+    items = [{'producto': i[0], 'cantidad': i[1], 'precio': float(i[2]), 'subtotal': float(i[3])} for i in items_raw]
+    
+    cursor.close()
+    conex.close()
+    
+    return render_template('verificar_factura.html', venta=venta, items=items)
