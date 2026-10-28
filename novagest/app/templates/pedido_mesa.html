@@ -34,18 +34,28 @@
       border-color: #38bdf8;
       transform: translateY(-2px);
     }
-    /* ESTILOS DE ALTO CONTRASTE CORREGIDOS PARA EL CONSUMO ACTUAL */
-    .table-dark {
-      background-color: transparent !important;
+    
+    /* 🌟 ESTILOS MEJORADOS PARA ALTA VISIBILIDAD EN LA TABLA Y EL TOTAL */
+    .table-consumo {
+      background-color: #0f172a !important;
       color: #f8fafc !important;
+      border-radius: 8px;
+      overflow: hidden;
     }
-    .table-dark th {
+    .table-consumo th {
+      background-color: #111827 !important;
       color: #38bdf8 !important;
-      border-bottom: 1px solid #334155;
+      border-bottom: 2px solid #334155;
+      font-weight: 700;
     }
-    .table-dark td {
+    .table-consumo td {
+      background-color: #0f172a !important;
       color: #f8fafc !important;
       border-color: #334155;
+      vertical-align: middle;
+    }
+    .table-consumo tr:hover td {
+      background-color: #1e293b !important;
     }
   </style>
 </head>
@@ -130,7 +140,7 @@
           <h4 class="fw-bold mb-3 text-success"><i class="bi bi-cart-check-fill"></i> Consumo Actual</h4>
           
           <div class="table-responsive">
-            <table class="table table-dark table-hover align-middle">
+            <table class="table table-consumo align-middle mb-0">
               <thead>
                 <tr>
                   <th>Producto</th>
