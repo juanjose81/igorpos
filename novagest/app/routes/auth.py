@@ -4,15 +4,16 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg
 from app.database import get_db_connection
 from itsdangerous import URLSafeTimedSerializer
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 import os
+import resend
 
 auth_bp = Blueprint('auth', __name__)
 
 # Serializador para tokens seguros de recuperación (expiran en 15 minutos)
 serializer = URLSafeTimedSerializer('clave_super_secreta_igorpos')
+
+# Configuramos la API Key de Resend para producción
+resend.api_key = os.getenv('RESEND_API_KEY')
 
 # Función automática para crear la tabla y asegurar sus columnas si ya existe
 def asegurar_tabla():
@@ -207,7 +208,7 @@ def logout():
     session.clear()
     return redirect(url_for('auth.login'))
 
-# --- RUTAS DE RECUPERACIÓN DE CONTRASEÑA (BLINDADAS CONTRA ERROR 502) ---
+# --- RUTAS DE RECUPERACIÓN DE CONTRASEÑA (VÍA RESEND API HTTP) ---
 @auth_bp.route('/recuperar-password', methods=['GET', 'POST'])
 def solicitar_recuperacion():
     if request.method == 'POST':
@@ -229,38 +230,27 @@ def solicitar_recuperacion():
                 token = serializer.dumps(email, salt='recuperar-clave-salt')
                 link_recuperacion = url_for('auth.restablecer_password', token=token, _external=True)
                 
-                remitente = os.getenv('MAIL_USERNAME')
-                password_app = os.getenv('MAIL_PASSWORD')
-                
-                if remitente and password_app:
-                    try:
-                        # Usamos un timeout estricto de 2 segundos para evitar que la app se congele
-                        servidor = smtplib.SMTP('smtp.gmail.com', 587, timeout=2)
-                        servidor.starttls()
-                        servidor.login(remitente, password_app)
-                        
-                        msg = MIMEMultipart()
-                        msg['From'] = remitente
-                        msg['To'] = email
-                        msg['Subject'] = '🔑 Recuperación de Contraseña - IGOR POS'
-                        
-                        cuerpo = f"""
-                        Hola, {usuario[1]}:
-                        
-                        Has solicitado restablecer tu contraseña de Gerente en IGOR POS. 
-                        Haz clic en el siguiente enlace (expira en 15 minutos):
-                        
-                        {link_recuperacion}
-                        
-                        Si tú no pediste esto, ignora este mensaje.
+                try:
+                    params = {
+                        "from": "IGOR POS <onboarding@resend.dev>",
+                        "to": [email],
+                        "subject": "🔑 Recuperación de Contraseña - IGOR POS",
+                        "html": f"""
+                        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                            <h2 style="color: #2563eb;">🔑 Recuperación de Contraseña - IGOR POS</h2>
+                            <p>Hola, <b>{usuario[1]}</b>:</p>
+                            <p>Has solicitado restablecer tu contraseña de Gerente en IGOR POS.</p>
+                            <p>Haz clic en el siguiente botón para cambiarla (expira en 15 minutos):</p>
+                            <p style="margin: 25px 0;">
+                                <a href="{link_recuperacion}" style="background-color: #2563eb; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Restablecer Contraseña</a>
+                            </p>
+                            <p>Si tú no pediste esto, puedes ignorar este mensaje de manera segura.</p>
+                        </div>
                         """
-                        msg.attach(MIMEText(cuerpo, 'plain'))
-                        servidor.sendmail(remitente, email, msg.as_string())
-                        servidor.quit()
-                    except Exception as mail_err:
-                        # Si Render bloquea el puerto 587, capturamos el error aquí mismo 
-                        # para que la aplicación NUNCA arroje error 502 a los usuarios.
-                        print(f"AVISO SMTP BLOQUEADO/TIMEOUT EN RENDER: {mail_err}")
+                    }
+                    resend.Emails.send(params)
+                except Exception as resend_err:
+                    print(f"DEBUG ERROR RESEND API: {resend_err}")
                 
             flash('Si el correo está registrado como Gerente, se han enviado las instrucciones a su bandeja.', 'success')
             return redirect(url_for('auth.solicitar_recuperacion'))
