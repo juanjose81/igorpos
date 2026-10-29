@@ -128,7 +128,6 @@ def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, cliente_nit, id_ve
     if "onrender.com" not in base_url and "localhost" not in base_url:
         base_url = "https://igorpos.onrender.com"
     url_real = f"{base_url}/admin/verificar-factura/{id_venta}"
-
     mensaje = (
         f"🚚 *Entrega:* Mesa / Domicilio (Mesa {numero_mesa})\n"
         f"👤 *Cliente:* {cliente_nombre or 'Consumidor Final'}\n"
@@ -365,7 +364,7 @@ def abrir_pedido(id_mesa):
         if p_sel:
             p_nom, p_pre, p_des = p_sel['nombre'], p_sel['precio'], p_sel['destino']
             try:
-                # BLINDAJE CLAVE: Buscamos únicamente ítems en estado 'Pendiente' para esta mesa, ignorando los ya facturados
+                # Buscamos únicamente ítems en estado 'Pendiente' para esta mesa, ignorando los ya facturados
                 cursor.execute("""
                     SELECT id, cantidad FROM pedidos_mesa 
                     WHERE empresa_id = %s AND id_mesa = %s AND producto = %s AND estado = 'Pendiente';
@@ -397,6 +396,9 @@ def abrir_pedido(id_mesa):
             conex.commit()
         except Exception:
             conex.rollback()
+        cursor.close()
+        conex.close()
+        return redirect(url_for('caja_mesas.abrir_pedido', id_mesa=id_mesa))
             
     if request.method == 'POST' and 'guardar_olvido' in request.form:
         try:
@@ -409,6 +411,9 @@ def abrir_pedido(id_mesa):
             conex.commit()
         except Exception:
             conex.rollback()
+        cursor.close()
+        conex.close()
+        return redirect(url_for('caja_mesas.abrir_pedido', id_mesa=id_mesa))
             
     sincronizar_estados_mesas(cursor, conex, empresa_id)
         
