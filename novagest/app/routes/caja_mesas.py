@@ -124,7 +124,7 @@ def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, id_venta, total_ve
     for item in items:
         detalle_items += f"   • {item['cantidad']}x {item['producto']} — ${item['subtotal']:,.2f}\n"
         
-    # URL dinámica real basada en el servidor activo (Render o local)
+    # URL dinámica real basada en el servidor activo en Render
     base_url = request.host_url.rstrip('/')
     url_verificacion = f"{base_url}/admin/verificar-factura/{id_venta}"
     
