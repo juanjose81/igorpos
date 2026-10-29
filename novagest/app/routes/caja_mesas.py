@@ -124,6 +124,10 @@ def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, id_venta, total_ve
     for item in items:
         detalle_items += f"   • {item['cantidad']}x {item['producto']} — ${item['subtotal']:,.2f}\n"
         
+    # URL dinámica real basada en el servidor activo (Render o local)
+    base_url = request.host_url.rstrip('/')
+    url_verificacion = f"{base_url}/admin/verificar-factura/{id_venta}"
+    
     mensaje = (
         f"🚚 *Entrega:* Mesa / Domicilio\n"
         f"👤 {cliente_nombre or 'Cliente General'}\n"
@@ -139,6 +143,13 @@ def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, id_venta, total_ve
             f"No. de factura: {dian_result.get('numero_factura')}\n"
             f"Puedes consultarla aquí:\n"
             f"{dian_result.get('url_factura')}\n\n"
+        )
+    else:
+        mensaje += (
+            f"📄 *Recibo de Venta Oficial*\n"
+            f"No. de factura: #{id_venta}\n"
+            f"Puedes consultar y verificar tu factura aquí:\n"
+            f"{url_verificacion}\n\n"
         )
         
     mensaje += (
@@ -395,7 +406,7 @@ def abrir_pedido(id_mesa):
             conex.commit()
         except Exception:
             conex.rollback()
-        
+            
     if request.method == 'POST' and 'guardar_olvido' in request.form:
         try:
             cursor.execute("""
@@ -657,7 +668,6 @@ def cerrar_facturar_mesa(id_mesa):
     tipo_pago = request.form.get('tipo_pago', 'Efectivo')
     efectivo_recibido = float(request.form.get('efectivo_recibido', 0))
     
-    # Capturamos si desea factura o no
     desea_factura_impresa = request.form.get('desea_factura_impresa') == 'si'
     es_electronica = request.form.get('es_electronica') == 'si'
     
@@ -690,7 +700,6 @@ def cerrar_facturar_mesa(id_mesa):
     if not mesero_atendio or mesero_atendio.strip() == '' or mesero_atendio == 'Sin asignar':
         mesero_atendio = usuario_sesion
     
-    # 📝 REGISTRO OBLIGATORIO EN BASE DE DATOS (PARA LA DIAN / CAJA)
     cursor.execute("""
         INSERT INTO historial_ventas (empresa_id, id_mesa, numero_mesa, total_venta, tipo_pago, efectivo_recibido, devueltas, atendido_por, fecha_venta)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW()) RETURNING id;
@@ -738,11 +747,9 @@ def cerrar_facturar_mesa(id_mesa):
     cursor.close()
     conex.close()
     
-    # 🎛️ Si no marcó el checkbox de factura, NO imprime ni abre PDFs, guarda la venta limpia en BD
     if not desea_factura_impresa and not es_electronica:
         flash(f'✅ Venta #${id_venta} registrada por ${total_venta:,.2f} correctamente.', 'success')
         return redirect(url_for('caja_mesas.gestionar_mesas'))
-
     if dian_result:
         session['dian_result_temp'] = dian_result
     if link_wa:
@@ -973,7 +980,6 @@ def imprimir_ticket(id_venta):
     cursor.close()
     conex.close()
     
-    # URL real del host activo para el código QR
     base_url = request.host_url.rstrip('/')
     url_qr = f"{base_url}/admin/verificar-factura/{id_venta}"
     
@@ -986,7 +992,6 @@ def imprimir_ticket(id_venta):
         factura_electronica=factura_electronica
     )
 
-# 🌐 Ruta pública para verificar la factura al escanear el QR
 @caja_mesas_bp.route('/admin/verificar-factura/<int:id_venta>')
 def verificar_factura_qr(id_venta):
     conex = get_db_connection()
