@@ -354,7 +354,6 @@ function toggleDatosCliente() {
   }
 }
 // 🚀 NÚCLEO INSTANTÁNEO AJAX (FETCH API):
-// Procesa las peticiones al servidor en segundo plano sin refrescar la página
 async function recargarConsumoMesaAJAX() {
   try {
     const res = await fetch("{{ url_for('caja_mesas.obtener_pedido_json', id_mesa=mesa.id) }}");
@@ -408,7 +407,6 @@ async function recargarConsumoMesaAJAX() {
       });
     }
     
-    // Actualiza los totales en pantalla
     const totalFormatted = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 2 }).format(data.total);
     const displayTotal = document.getElementById('displayTotalVenta');
     const montoModal = document.getElementById('montoTotalPagarDisplay');
@@ -435,7 +433,6 @@ function vincularFormulariosAJAX() {
       e.preventDefault();
       const formData = new FormData(this);
       
-      // Si fue click en el botón de submit de "agregar_producto"
       const submitter = e.submitter;
       if (submitter && submitter.name) {
         formData.append(submitter.name, submitter.value || '');
@@ -446,10 +443,15 @@ function vincularFormulariosAJAX() {
           method: this.method || 'POST',
           body: formData
         });
-        // Refresca la tabla y montos al instante en segundo plano
+        
+        // Si borra un ítem o vacía la mesa, recargamos para asegurar limpieza total de estado
+        if (this.action.includes('eliminar-item') || this.action.includes('disminuir') || this.action.includes('vaciar')) {
+          location.reload();
+          return;
+        }
+        
         recargarConsumoMesaAJAX();
       } catch (err) {
-        // Respaldo de seguridad
         this.submit();
       }
     });
