@@ -365,6 +365,7 @@ def abrir_pedido(id_mesa):
         if p_sel:
             p_nom, p_pre, p_des = p_sel['nombre'], p_sel['precio'], p_sel['destino']
             try:
+                # BLINDAJE CLAVE: Buscamos únicamente ítems en estado 'Pendiente' para esta mesa, ignorando los ya facturados
                 cursor.execute("""
                     SELECT id, cantidad FROM pedidos_mesa 
                     WHERE empresa_id = %s AND id_mesa = %s AND producto = %s AND estado = 'Pendiente';
@@ -381,7 +382,6 @@ def abrir_pedido(id_mesa):
                 conex.commit()
             except Exception as e:
                 conex.rollback()
-        # SOLUCIÓN CLAVE: Redirigimos inmediatamente para refrescar la vista de forma limpia y mostrar los botones de comanda
         cursor.close()
         conex.close()
         return redirect(url_for('caja_mesas.abrir_pedido', id_mesa=id_mesa))
@@ -428,6 +428,7 @@ def abrir_pedido(id_mesa):
     cursor.execute("SELECT id, numero_mesa, estado FROM mesas WHERE empresa_id = %s ORDER BY id ASC;", (empresa_id,))
     todas_las_mesas = cursor.fetchall()
     
+    # SOLO traemos los consumos activos de la mesa (excluimos 'Facturado')
     cursor.execute("""
         SELECT id, producto, precio, cantidad, (precio * cantidad) as subtotal, estado, destino
         FROM pedidos_mesa
