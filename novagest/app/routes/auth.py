@@ -58,6 +58,68 @@ def asegurar_tabla():
 # Se ejecuta al iniciar el módulo
 asegurar_tabla()
 
+
+# 🛡️ BLOQUEO GLOBAL EN TIEMPO REAL (DÍA 8 EN ADELANTE)
+@auth_bp.before_app_request
+def verificar_estado_suscripcion_global():
+    ruta = request.path
+    # Rutas libres donde no se aplica el bloqueo para permitir iniciar sesión o pagar
+    rutas_libres = ['/login', '/registro', '/logout', '/recuperar-password', '/static']
+    if any(ruta.startswith(r) for r in rutas_libres) or '/wompi/' in ruta or '/planes' in ruta:
+        return None
+        
+    user_id = session.get('user_id') or session.get('usuario_id')
+    if not user_id:
+        return None
+        
+    empresa_id = session.get('empresa_id') or user_id
+    rol = str(session.get('rol', '')).lower()
+    
+    try:
+        conex = get_db_connection()
+        with conex.cursor() as cursor:
+            cursor.execute("""
+                SELECT trial_ends_at, subscription_ends_at, plan_status 
+                FROM usuarios WHERE id = %s
+            """, (empresa_id,))
+            res = cursor.fetchone()
+        conex.close()
+        
+        if res:
+            g_trial, g_sub, g_status = res
+            now = datetime.now()
+            
+            # Verificamos si expiró el trial de 7 días exactos
+            if g_status == 'TRIAL' and g_trial and now > g_trial:
+                g_status = 'EXPIRED'
+                conex = get_db_connection()
+                with conex.cursor() as cursor:
+                    cursor.execute("UPDATE usuarios SET plan_status = 'EXPIRED' WHERE id = %s", (empresa_id,))
+                    conex.commit()
+                conex.close()
+            elif g_status == 'ACTIVE' and g_sub and now > g_sub:
+                g_status = 'EXPIRED'
+                conex = get_db_connection()
+                with conex.cursor() as cursor:
+                    cursor.execute("UPDATE usuarios SET plan_status = 'EXPIRED' WHERE id = %s", (empresa_id,))
+                    conex.commit()
+                conex.close()
+                
+            # ACCIÓN DE BLOQUEO SI ESTÁ VENCIDO
+            if g_status in ['EXPIRED', 'CANCELLED']:
+                if rol in ['gerente', 'administrador', 'admin']:
+                    flash("⚠️ Tu período de prueba de 7 días ha finalizado. Realiza el pago para desbloquear el sistema.", "warning")
+                    return redirect(url_for('wompi.planes_pago'))
+                else:
+                    session.clear()
+                    flash("🚫 La suscripción de la empresa está vencida. Comunícate con el Gerente para renovar el servicio.", "danger")
+                    return redirect(url_for('auth.login'))
+    except Exception as e:
+        print(f"Error en validación global de suscripción: {e}")
+        
+    return None
+
+
 @auth_bp.route('/registro', methods=['GET', 'POST'])
 def registro():
     if request.method == 'POST':
@@ -70,13 +132,12 @@ def registro():
         rol = 'gerente'
         password_hash = generate_password_hash(password)
         
-        # Calculamos los 7 días de prueba gratis para la empresa
+        # Calculamos los 7 días exactos de prueba gratis
         trial_end = datetime.now() + timedelta(days=7)
         
         try:
             conex = get_db_connection()
             with conex.cursor() as cursor:
-                # 🛑 1. VALIDACIÓN ANTI-DUPLICADOS: Verificamos si el correo ya existe en la BD
                 cursor.execute("SELECT id FROM usuarios WHERE LOWER(email) = LOWER(%s);", (email,))
                 usuario_existente = cursor.fetchone()
                 
@@ -85,7 +146,6 @@ def registro():
                     flash("Esta cuenta ya existe. Por favor, inicia sesión o usa otro correo.", 'danger')
                     return render_template('registro.html')
                 
-                # 2. Si no existe, insertamos el usuario gerente incluyendo los campos del trial
                 cursor.execute(
                     """INSERT INTO usuarios 
                     (nombre_restaurante, nombre, email, password, password_hash, telefono, rol, trial_ends_at, plan_status) 
@@ -94,22 +154,20 @@ def registro():
                 )
                 nuevo_id = cursor.fetchone()[0]
                 
-                # 3. Actualizamos su empresa_id para que sea único e independiente basado en su propio id
                 cursor.execute(
                     "UPDATE usuarios SET empresa_id = %s WHERE id = %s",
                     (nuevo_id, nuevo_id)
                 )
                 conex.commit()
             conex.close()
-            print("DEBUG: ¡Empresa y usuario registrado con éxito con 7 días de trial!")
             flash('¡Restaurante registrado con éxito! Tienes 7 días de prueba gratis. Ya puedes iniciar sesión.', 'success')
             return redirect(url_for('auth.login'))
         except Exception as e:
-            print(f"DEBUG ERROR EN REGISTRO: {e}")
             flash(f'Error al registrar: {e}', 'danger')
             return render_template('registro.html')
             
     return render_template('registro.html')
+
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -127,21 +185,14 @@ def login():
                 user = cursor.fetchone()
             conex.close()
             
-            # 🛑 VALIDACIÓN DE CREDENCIALES: Si no existe el usuario o la contraseña es incorrecta
             if not user or not user[2] or not check_password_hash(user[2], password):
-                print(f"DEBUG: Credenciales incorrectas para '{email}'.")
                 flash("El usuario o contraseña es incorrecto.", 'danger')
             else:
-                print("DEBUG: ¡Contraseña correcta!")
-                
                 user_id = user[0]
                 rol = user[3]
                 empresa_id = user[5] or user[0]
-                trial_ends_at = user[6]
-                subscription_ends_at = user[7]
-                plan_status = user[8] or 'TRIAL'
                 
-                # Buscamos al GERENTE de esta empresa para revisar el estado real de pago/trial de la compañía
+                # Buscamos al GERENTE para revisar el estado real de la empresa
                 conex = get_db_connection()
                 with conex.cursor() as cursor:
                     cursor.execute("""
@@ -155,7 +206,6 @@ def login():
                     g_trial, g_sub, g_status = gerente_data
                     now = datetime.now()
                     
-                    # Verificamos si el trial expiró y no hay suscripción activa
                     if g_status == 'TRIAL' and g_trial and now > g_trial:
                         g_status = 'EXPIRED'
                         conex = get_db_connection()
@@ -171,7 +221,6 @@ def login():
                             conex.commit()
                         conex.close()
                         
-                    # 🛑 BLOQUEO O REDIRECCIÓN SI ESTÁ VENCIDO
                     if g_status in ['EXPIRED', 'CANCELLED']:
                         if rol == 'gerente':
                             flash("⚠️ Tu período de prueba o suscripción ha vencido. Por favor realiza el pago para continuar.", "warning")
@@ -186,7 +235,6 @@ def login():
                             flash("🚫 La suscripción de la empresa está vencida. Comunícate con el Gerente para renovar el servicio.", "danger")
                             return render_template('login.html')
                             
-                # Si todo está OK, guardamos sesión y entra normal
                 session['user_id'] = user_id
                 session['usuario_id'] = user_id 
                 session['email'] = user[1]
@@ -194,30 +242,28 @@ def login():
                 session['nombre'] = user[4]
                 session['empresa_id'] = empresa_id
                 
-                print("DEBUG: ¡Login exitoso y suscripción válida!")
                 return redirect(url_for('admin.dashboard'))
                 
         except Exception as e:
-            print(f"DEBUG ERROR EN LOGIN: {e}")
             flash(f"Error en el servidor: {e}", 'danger')
             
     return render_template('login.html')
+
 
 @auth_bp.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('auth.login'))
 
-# --- RUTAS DE RECUPERACIÓN DE CONTRASEÑA (VÍA RESEND API HTTP) ---
+
+# --- RECUPERACIÓN DE CONTRASEÑA ---
 @auth_bp.route('/recuperar-password', methods=['GET', 'POST'])
 def solicitar_recuperacion():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-        
         try:
             conex = get_db_connection()
             with conex.cursor() as cursor:
-                # Validamos que el correo exista y sea Gerente / Administrador
                 cursor.execute("""
                     SELECT id, nombre, rol FROM usuarios 
                     WHERE LOWER(email) = LOWER(%s) 
@@ -229,7 +275,6 @@ def solicitar_recuperacion():
             if usuario:
                 token = serializer.dumps(email, salt='recuperar-clave-salt')
                 link_recuperacion = url_for('auth.restablecer_password', token=token, _external=True)
-                
                 try:
                     params = {
                         "from": "IGOR POS <onboarding@resend.dev>",
@@ -240,34 +285,29 @@ def solicitar_recuperacion():
                             <h2 style="color: #2563eb;">🔑 Recuperación de Contraseña - IGOR POS</h2>
                             <p>Hola, <b>{usuario[1]}</b>:</p>
                             <p>Has solicitado restablecer tu contraseña de Gerente en IGOR POS.</p>
-                            <p>Haz clic en el siguiente botón para cambiarla (expira en 15 minutos):</p>
-                            <p style="margin: 25px 0;">
-                                <a href="{link_recuperacion}" style="background-color: #2563eb; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Restablecer Contraseña</a>
-                            </p>
-                            <p>Si tú no pediste esto, puedes ignorar este mensaje de manera segura.</p>
+                            <p><a href="{link_recuperacion}" style="background-color: #2563eb; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Restablecer Contraseña</a></p>
                         </div>
                         """
                     }
                     resend.Emails.send(params)
                 except Exception as resend_err:
-                    print(f"DEBUG ERROR RESEND API: {resend_err}")
-                
-            flash('Si el correo está registrado como Gerente, se han enviado las instrucciones a su bandeja.', 'success')
+                    print(f"Error Resend: {resend_err}")
+                    
+            flash('Si el correo está registrado como Gerente, se han enviado las instrucciones.', 'success')
             return redirect(url_for('auth.solicitar_recuperacion'))
-            
-        except Exception as e:
-            print(f"DEBUG ERROR GENERAL RECUPERACION: {e}")
-            flash('Si el correo está registrado como Gerente, se han enviado las instrucciones a su bandeja.', 'success')
+        except Exception:
+            flash('Si el correo está registrado como Gerente, se han enviado las instrucciones.', 'success')
             return redirect(url_for('auth.solicitar_recuperacion'))
             
     return render_template('recuperar_solicitud.html')
+
 
 @auth_bp.route('/restablecer-password/<token>', methods=['GET', 'POST'])
 def restablecer_password(token):
     try:
         email = serializer.loads(token, salt='recuperar-clave-salt', max_age=900)
     except Exception:
-        flash('El enlace de recuperación es inválido o ya ha expirado.', 'danger')
+        flash('El enlace es inválido o ya ha expirado.', 'danger')
         return redirect(url_for('auth.solicitar_recuperacion'))
         
     if request.method == 'POST':
@@ -291,6 +331,6 @@ def restablecer_password(token):
             flash('¡Contraseña restablecida con éxito! Ya puedes iniciar sesión.', 'success')
             return redirect(url_for('auth.login'))
         except Exception as e:
-            flash(f'Error al actualizar la contraseña: {e}', 'danger')
+            flash(f'Error al actualizar: {e}', 'danger')
             
     return render_template('recuperar_cambiar.html')
