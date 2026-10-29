@@ -122,9 +122,13 @@
                 const fechaStr = el.getAttribute('data-fecha');
                 if (!fechaStr) return;
                 
-                let fechaLimpia = fechaStr.replace('et ', 'T').replace(' ', 'T');
-                const fechaComanda = new Date(fechaLimpia);
+                // BLINDAJE DE ZONA HORARIA (UTC): Convertimos a formato ISO con 'Z' al final
+                let fechaLimpia = fechaStr.replace(' ', 'T');
+                if (!fechaLimpia.endsWith('Z') && !fechaLimpia.includes('+')) {
+                    fechaLimpia += 'Z';
+                }
                 
+                const fechaComanda = new Date(fechaLimpia);
                 if (isNaN(fechaComanda.getTime())) return;
                 
                 const ahora = new Date();
