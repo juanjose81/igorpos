@@ -116,7 +116,7 @@
           <div class="row g-2 overflow-auto" style="max-height: 530px;" id="contenedorCatalogo">
             {% for prod in catalogo %}
               <div class="col-6 col-md-4 item-producto" data-nombre="{{ prod.nombre | lower }}">
-                <form action="{{ url_for('caja_mesas.abrir_pedido', id_mesa=mesa.id) }}" method="POST">
+                <form action="{{ url_for('caja_mesas.abrir_pedido', id_mesa=mesa.id) }}" method="POST" class="form-ajax-accion">
                   <input type="hidden" name="producto_id" value="{{ prod.id }}">
                   <input type="hidden" name="cantidad" value="1">
                   <button type="submit" name="agregar_producto" class="btn btn-cat-prod w-100 p-3 rounded-3 h-100 d-flex flex-column justify-content-between">
@@ -149,9 +149,9 @@
                   <th class="text-center">Acción</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="tablaConsumoBody">
                 {% if not pedidos %}
-                  <tr>
+                  <tr id="trSinProductos">
                     <td colspan="4" class="text-center text-light opacity-75 py-4">No hay productos consumidos en esta mesa.</td>
                   </tr>
                 {% else %}
@@ -171,11 +171,11 @@
                       <td class="text-center">
                         <!-- BOTONES + y - CLAROS Y VISIBLES -->
                         <div class="btn-group btn-group-sm">
-                          <form action="{{ url_for('caja_mesas.disminuir_cantidad', id_item=item.id) }}" method="POST" class="d-inline">
+                          <form action="{{ url_for('caja_mesas.disminuir_cantidad', id_item=item.id) }}" method="POST" class="d-inline form-ajax-accion">
                             <button type="submit" class="btn btn-outline-light btn-sm fw-bold px-2">-</button>
                           </form>
                           <span class="btn btn-dark btn-sm disabled fw-bold text-white border border-secondary px-2" style="opacity: 1;">{{ item.cantidad }}</span>
-                          <form action="{{ url_for('caja_mesas.aumentar_cantidad', id_item=item.id) }}" method="POST" class="d-inline">
+                          <form action="{{ url_for('caja_mesas.aumentar_cantidad', id_item=item.id) }}" method="POST" class="d-inline form-ajax-accion">
                             <button type="submit" class="btn btn-outline-light btn-sm fw-bold px-2">+</button>
                           </form>
                         </div>
@@ -183,7 +183,7 @@
                       <td class="text-end fw-bold text-warning">${{ "{:,.2f}".format(item.subtotal) }}</td>
                       <td class="text-center">
                         <!-- BOTÓN ELIMINAR -->
-                        <form action="{{ url_for('caja_mesas.eliminar_item', id_item=item.id) }}" method="POST">
+                        <form action="{{ url_for('caja_mesas.eliminar_item', id_item=item.id) }}" method="POST" class="form-ajax-accion">
                           <button type="submit" class="btn btn-outline-danger btn-sm" title="Eliminar / Corregir"><i class="bi bi-trash"></i></button>
                         </form>
                       </td>
@@ -197,7 +197,7 @@
         <div class="border-top border-secondary pt-3 mt-3">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <span class="fs-4 fw-bold text-white">TOTAL:</span>
-            <span class="fs-3 fw-bold text-success">${{ "{:,.2f}".format(total) }}</span>
+            <span class="fs-3 fw-bold text-success" id="displayTotalVenta">${{ "{:,.2f}".format(total) }}</span>
           </div>
           <div class="d-grid gap-2">
             <!-- BOTÓN GUARDAR / ACTUALIZAR VISTA -->
@@ -329,6 +329,7 @@ function filtrarProductos() {
     }
   });
 }
+
 function calcularVueltos() {
   const total = parseFloat(document.getElementById('inputTotalVenta').value) || 0;
   const recibido = parseFloat(document.getElementById('inputEfectivoRecibido').value) || 0;
@@ -340,20 +341,129 @@ function calcularVueltos() {
     minimumFractionDigits: 2
   }).format(vueltos);
 }
+
 function toggleDatosCliente() {
   const checkImpresora = document.getElementById('checkFacturaImpresa');
   const checkWA = document.getElementById('checkFacturaWA');
   const seccion = document.getElementById('seccionDatosCliente');
   
-  if (checkImpresora.checked || checkWA.checked) {
-    seccion.style.display = 'block';
-  } else {
-    seccion.style.display = 'none';
+  if (checkImpresora && checkWA && seccion) {
+    if (checkImpresora.checked || checkWA.checked) {
+      seccion.style.display = 'block';
+    } else {
+      seccion.style.display = 'none';
+    }
   }
 }
+
+// 🚀 NÚCLEO INSTANTÁNEO AJAX (FETCH API):
+// Procesa las peticiones al servidor en segundo plano sin refrescar la página
+async function recargarConsumoMesaAJAX() {
+  try {
+    const res = await fetch("{{ url_for('caja_mesas.obtener_pedido_json', id_mesa=mesa.id) }}");
+    if (!res.ok) return;
+    const data = await res.json();
+    
+    const tbody = document.getElementById('tablaConsumoBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (!data.pedidos || data.pedidos.length === 0) {
+      tbody.innerHTML = `
+        <tr id="trSinProductos">
+          <td colspan="4" class="text-center text-light opacity-75 py-4">No hay productos consumidos en esta mesa.</td>
+        </tr>`;
+    } else {
+      data.pedidos.forEach(item => {
+        let badgeClass = 'badge-estado-entregado';
+        if (item.estado === 'Pendiente') badgeClass = 'badge-estado-pendiente';
+        else if (item.estado === 'Comandado') badgeClass = 'badge-estado-comandado';
+        else if (item.estado === 'Listo') badgeClass = 'badge-estado-listo';
+        
+        const subtotalFormatted = new Intl.NumberFormat('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(item.subtotal);
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <span class="fw-semibold text-white">${item.producto}</span>
+            <br>
+            <small class="badge ${badgeClass}">${item.estado} (${item.destino})</small>
+          </td>
+          <td class="text-center">
+            <div class="btn-group btn-group-sm">
+              <form action="/admin/mesas/pedido/disminuir/${item.id}" method="POST" class="d-inline form-ajax-accion">
+                <button type="submit" class="btn btn-outline-light btn-sm fw-bold px-2">-</button>
+              </form>
+              <span class="btn btn-dark btn-sm disabled fw-bold text-white border border-secondary px-2" style="opacity: 1;">${item.cantidad}</span>
+              <form action="/admin/mesas/pedido/aumentar/${item.id}" method="POST" class="d-inline form-ajax-accion">
+                <button type="submit" class="btn btn-outline-light btn-sm fw-bold px-2">+</button>
+              </form>
+            </div>
+          </td>
+          <td class="text-end fw-bold text-warning">$${subtotalFormatted}</td>
+          <td class="text-center">
+            <form action="/admin/mesas/pedido/eliminar-item/${item.id}" method="POST" class="form-ajax-accion">
+              <button type="submit" class="btn btn-outline-danger btn-sm" title="Eliminar / Corregir"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    
+    // Actualiza los totales en pantalla
+    const totalFormatted = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 2 }).format(data.total);
+    const displayTotal = document.getElementById('displayTotalVenta');
+    const montoModal = document.getElementById('montoTotalPagarDisplay');
+    const inputTotal = document.getElementById('inputTotalVenta');
+    const inputRecibido = document.getElementById('inputEfectivoRecibido');
+    
+    if (displayTotal) displayTotal.innerText = totalFormatted;
+    if (montoModal) montoModal.innerText = totalFormatted;
+    if (inputTotal) inputTotal.value = data.total;
+    if (inputRecibido) inputRecibido.value = data.total;
+    
+    calcularVueltos();
+    vincularFormulariosAJAX();
+  } catch (err) {
+    console.error("Error al actualizar consumo AJAX:", err);
+  }
+}
+
+function vincularFormulariosAJAX() {
+  document.querySelectorAll('.form-ajax-accion').forEach(form => {
+    if (form.dataset.ajaxVinculado) return;
+    form.dataset.ajaxVinculado = "true";
+    
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      
+      // Si fue click en el botón de submit de "agregar_producto"
+      const submitter = e.submitter;
+      if (submitter && submitter.name) {
+        formData.append(submitter.name, submitter.value || '');
+      }
+      
+      try {
+        await fetch(this.action, {
+          method: this.method || 'POST',
+          body: formData
+        });
+        // Refresca la tabla y montos al instante en segundo plano
+        recargarConsumoMesaAJAX();
+      } catch (err) {
+        // Respaldo de seguridad
+        this.submit();
+      }
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   calcularVueltos();
   toggleDatosCliente();
+  vincularFormulariosAJAX();
 });
 </script>
 </body>
