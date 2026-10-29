@@ -113,7 +113,7 @@ def obtener_empresa_id_seguro(cursor):
         pass
     return 1
 
-def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, id_venta, total_venta, numero_mesa, items, dian_result=None):
+def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, cliente_nit, id_venta, total_venta, numero_mesa, items, url_documento=None, dian_result=None):
     if not telefono_cliente:
         return "#"
     tel_limpio = "".join(filter(str.isdigit, str(telefono_cliente)))
@@ -124,14 +124,11 @@ def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, id_venta, total_ve
     for item in items:
         detalle_items += f"   • {item['cantidad']}x {item['producto']} — ${item['subtotal']:,.2f}\n"
         
-    # URL dinámica real basada en el servidor activo en Render
-    base_url = request.host_url.rstrip('/')
-    url_verificacion = f"{base_url}/admin/verificar-factura/{id_venta}"
-    
     mensaje = (
-        f"🚚 *Entrega:* Mesa / Domicilio\n"
-        f"👤 {cliente_nombre or 'Cliente General'}\n"
-        f"📞 Tel: +57 {tel_limpio}\n\n"
+        f"🚚 *Entrega:* Mesa / Domicilio (Mesa {numero_mesa})\n"
+        f"👤 *Cliente:* {cliente_nombre or 'Consumidor Final'}\n"
+        f"📄 *NIT/CC:* {cliente_nit or '222222222222'}\n"
+        f"📞 *Tel:* +57 {tel_limpio}\n\n"
         f"💳 *Pago:* Efectivo / Transferencia\n"
         f"✅ Generado desde IGOR POS\n"
         f"----------------------------------------\n"
@@ -139,21 +136,19 @@ def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, id_venta, total_ve
     
     if dian_result and dian_result.get('exito'):
         mensaje += (
-            f"📄 *Factura electrónica generada*\n\n"
+            f"📄 *Factura Electrónica DIAN*\n"
             f"No. de factura: {dian_result.get('numero_factura')}\n"
-            f"Puedes consultarla aquí:\n"
-            f"{dian_result.get('url_factura')}\n\n"
+            f"Descarga tu PDF / Consúltala aquí:\n{dian_result.get('url_factura')}\n\n"
         )
-    else:
+    elif url_documento:
         mensaje += (
-            f"📄 *Recibo de Venta Oficial*\n"
-            f"No. de factura: #{id_venta}\n"
-            f"Puedes consultar y verificar tu factura aquí:\n"
-            f"{url_verificacion}\n\n"
+            f"📄 *Recibo y Factura Oficial (PDF / Web):*\n"
+            f"Puedes ver y descargar tu factura con todos tus datos aquí:\n"
+            f"{url_documento}\n\n"
         )
         
     mensaje += (
-        f"*Detalle de Consumo (Mesa {numero_mesa}):*\n{detalle_items}"
+        f"*Detalle de Consumo:*\n{detalle_items}"
         f"----------------------------------------\n"
         f"💰 *TOTAL:* ${total_venta:,.2f}\n\n"
         f"Gracias por su compra\nEquipo IGOR POS 🚀"
@@ -725,15 +720,20 @@ def cerrar_facturar_mesa(id_mesa):
         }
         dian_result = enviar_factura_dian_api(factura_data, es_demo=True)
     
+    base_url = request.host_url.rstrip('/')
+    url_documento = f"{base_url}/admin/verificar-factura/{id_venta}"
+    
     link_wa = None
-    if cliente_telefono and es_electronica:
+    if cliente_telefono:
         link_wa = generar_enlace_whatsapp(
             cliente_telefono, 
-            cliente_nombre or 'Cliente General', 
+            cliente_nombre, 
+            cliente_nit,
             id_venta, 
             total_venta, 
             num_mesa_str, 
             items_lista, 
+            url_documento=url_documento,
             dian_result=dian_result
         )
         
@@ -747,9 +747,6 @@ def cerrar_facturar_mesa(id_mesa):
     cursor.close()
     conex.close()
     
-    if not desea_factura_impresa and not es_electronica:
-        flash(f'✅ Venta #${id_venta} registrada por ${total_venta:,.2f} correctamente.', 'success')
-        return redirect(url_for('caja_mesas.gestionar_mesas'))
     if dian_result:
         session['dian_result_temp'] = dian_result
     if link_wa:
