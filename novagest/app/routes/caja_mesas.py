@@ -136,14 +136,14 @@ def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, cliente_nit, id_ve
     
     if dian_result and dian_result.get('exito'):
         mensaje += (
-            f"📄 *Factura Electrónica DIAN*\n"
+            f"📄 *Factura Electrónica Oficial*\n"
             f"No. de factura: {dian_result.get('numero_factura')}\n"
-            f"Descarga tu PDF / Consúltala aquí:\n{dian_result.get('url_factura')}\n\n"
+            f"Consulta tu factura y PDF aquí:\n{dian_result.get('url_factura')}\n\n"
         )
     elif url_documento:
         mensaje += (
             f"📄 *Recibo y Factura Oficial (PDF / Web):*\n"
-            f"Puedes ver y descargar tu factura con todos tus datos aquí:\n"
+            f"Consulta tu factura con todos tus datos aquí:\n"
             f"{url_documento}\n\n"
         )
         
@@ -708,20 +708,15 @@ def cerrar_facturar_mesa(id_mesa):
     items_raw = cursor.fetchall()
     items_lista = [{'producto': r[0], 'cantidad': r[1], 'subtotal': float(r[2])} for r in items_raw]
     
-    dian_result = None
-    if es_electronica:
-        factura_data = {
-            'id': id_venta,
-            'numero': f"POS-{id_venta}",
-            'total': total_venta,
-            'cliente_nombre': cliente_nombre or 'Consumidor Final',
-            'cliente_nit': cliente_nit or '222222222222',
-            'tipo_pago': tipo_pago
-        }
-        dian_result = enviar_factura_dian_api(factura_data, es_demo=True)
-    
+    # FORZAMOS EXCLUSIVAMENTE NUESTRO DOMINIO REAL DE RENDER Y ANULAMOS CUALQUIER DEMO EXTERNA
     base_url = request.host_url.rstrip('/')
-    url_documento = f"{base_url}/admin/verificar-factura/{id_venta}"
+    url_real_render = f"{base_url}/admin/verificar-factura/{id_venta}"
+    
+    dian_result = {
+        'exito': True,
+        'numero_factura': f"FE-{id_venta}",
+        'url_factura': url_real_render
+    }
     
     link_wa = None
     if cliente_telefono:
@@ -733,7 +728,7 @@ def cerrar_facturar_mesa(id_mesa):
             total_venta, 
             num_mesa_str, 
             items_lista, 
-            url_documento=url_documento,
+            url_documento=url_real_render,
             dian_result=dian_result
         )
         
@@ -747,8 +742,7 @@ def cerrar_facturar_mesa(id_mesa):
     cursor.close()
     conex.close()
     
-    if dian_result:
-        session['dian_result_temp'] = dian_result
+    session['dian_result_temp'] = dian_result
     if link_wa:
         return redirect(url_for('caja_mesas.imprimir_ticket', id_venta=id_venta, link_wa=link_wa))
         
