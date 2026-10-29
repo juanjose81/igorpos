@@ -113,7 +113,7 @@ def obtener_empresa_id_seguro(cursor):
         pass
     return 1
 
-def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, cliente_nit, id_venta, total_venta, numero_mesa, items, url_documento=None, dian_result=None):
+def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, cliente_nit, id_venta, total_venta, numero_mesa, items, url_documento=None):
     if not telefono_cliente:
         return "#"
     tel_limpio = "".join(filter(str.isdigit, str(telefono_cliente)))
@@ -124,6 +124,12 @@ def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, cliente_nit, id_ve
     for item in items:
         detalle_items += f"   • {item['cantidad']}x {item['producto']} — ${item['subtotal']:,.2f}\n"
         
+    # URL REAL DE RENDER ASEGURADA (FORZADA PARA EVITAR DEMOS)
+    base_url = request.host_url.rstrip('/')
+    if "onrender.com" not in base_url and "localhost" not in base_url:
+        base_url = "https://igorpos.onrender.com"
+    url_real = f"{base_url}/admin/verificar-factura/{id_venta}"
+
     mensaje = (
         f"🚚 *Entrega:* Mesa / Domicilio (Mesa {numero_mesa})\n"
         f"👤 *Cliente:* {cliente_nombre or 'Consumidor Final'}\n"
@@ -132,22 +138,9 @@ def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, cliente_nit, id_ve
         f"💳 *Pago:* Efectivo / Transferencia\n"
         f"✅ Generado desde IGOR POS\n"
         f"----------------------------------------\n"
-    )
-    
-    if dian_result and dian_result.get('exito'):
-        mensaje += (
-            f"📄 *Factura Electrónica Oficial*\n"
-            f"No. de factura: {dian_result.get('numero_factura')}\n"
-            f"Consulta tu factura y PDF aquí:\n{dian_result.get('url_factura')}\n\n"
-        )
-    elif url_documento:
-        mensaje += (
-            f"📄 *Recibo y Factura Oficial (PDF / Web):*\n"
-            f"Consulta tu factura con todos tus datos aquí:\n"
-            f"{url_documento}\n\n"
-        )
-        
-    mensaje += (
+        f"📄 *Recibo y Factura Oficial (IGOR POS):*\n"
+        f"Consulta tu factura real con todos tus datos aquí:\n"
+        f"{url_real}\n\n"
         f"*Detalle de Consumo:*\n{detalle_items}"
         f"----------------------------------------\n"
         f"💰 *TOTAL:* ${total_venta:,.2f}\n\n"
@@ -708,8 +701,10 @@ def cerrar_facturar_mesa(id_mesa):
     items_raw = cursor.fetchall()
     items_lista = [{'producto': r[0], 'cantidad': r[1], 'subtotal': float(r[2])} for r in items_raw]
     
-    # FORZAMOS EXCLUSIVAMENTE NUESTRO DOMINIO REAL DE RENDER Y ANULAMOS CUALQUIER DEMO EXTERNA
+    # URL REAL DE RENDER ASEGURADA
     base_url = request.host_url.rstrip('/')
+    if "onrender.com" not in base_url and "localhost" not in base_url:
+        base_url = "https://igorpos.onrender.com"
     url_real_render = f"{base_url}/admin/verificar-factura/{id_venta}"
     
     dian_result = {
@@ -728,8 +723,7 @@ def cerrar_facturar_mesa(id_mesa):
             total_venta, 
             num_mesa_str, 
             items_lista, 
-            url_documento=url_real_render,
-            dian_result=dian_result
+            url_documento=url_real_render
         )
         
     cursor.execute("""
@@ -972,6 +966,8 @@ def imprimir_ticket(id_venta):
     conex.close()
     
     base_url = request.host_url.rstrip('/')
+    if "onrender.com" not in base_url and "localhost" not in base_url:
+        base_url = "https://igorpos.onrender.com"
     url_qr = f"{base_url}/admin/verificar-factura/{id_venta}"
     
     return render_template(
