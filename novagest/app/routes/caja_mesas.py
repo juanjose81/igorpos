@@ -86,8 +86,6 @@ def asegurar_tablas_globales(cursor, conex):
     conex.commit()
 
 def sincronizar_estados_mesas(cursor, conex, empresa_id):
-    # Una mesa solo se mantiene ocupada si tiene productos COMANDADOS, LISTOS o ENTREGADOS. 
-    # Los 'Pendientes' que no se han mandado a cocina no deben bloquear la mesa ni mostrar precios falsos.
     cursor.execute("""
         UPDATE mesas 
         SET estado = 'Disponible', mesero_atendiendo = 'Sin asignar'
@@ -208,7 +206,6 @@ def gestionar_mesas():
         conex.close()
         return redirect(url_for('caja_mesas.gestionar_mesas'))
         
-    # CORRECCIÓN: Solo sumamos en el total acumulado de la mesa los productos que ya están COMANDADOS, LISTOS o ENTREGADOS.
     cursor.execute("""
         SELECT m.id, m.numero_mesa, m.estado, m.mesero_atendiendo,
                COALESCE(SUM(CASE WHEN p.estado IN ('Comandado', 'Listo', 'Entregado') THEN p.precio * p.cantidad ELSE 0 END), 0) AS total_acumulado
@@ -384,6 +381,10 @@ def abrir_pedido(id_mesa):
                 conex.commit()
             except Exception as e:
                 conex.rollback()
+        # SOLUCIÓN CLAVE: Redirigimos inmediatamente para refrescar la vista de forma limpia y mostrar los botones de comanda
+        cursor.close()
+        conex.close()
+        return redirect(url_for('caja_mesas.abrir_pedido', id_mesa=id_mesa))
                 
     if request.method == 'POST' and 'enviar_comanda' in request.form:
         try:
