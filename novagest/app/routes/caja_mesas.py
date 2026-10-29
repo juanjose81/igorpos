@@ -86,6 +86,8 @@ def asegurar_tablas_globales(cursor, conex):
     conex.commit()
 
 def sincronizar_estados_mesas(cursor, conex, empresa_id):
+    # Una mesa solo se mantiene ocupada si tiene productos COMANDADOS, LISTOS o ENTREGADOS. 
+    # Los 'Pendientes' que no se han mandado a cocina no deben bloquear la mesa ni mostrar precios falsos.
     cursor.execute("""
         UPDATE mesas 
         SET estado = 'Disponible', mesero_atendiendo = 'Sin asignar'
@@ -93,7 +95,7 @@ def sincronizar_estados_mesas(cursor, conex, empresa_id):
         AND id NOT IN (
             SELECT DISTINCT id_mesa 
             FROM pedidos_mesa 
-            WHERE empresa_id = %s AND estado IN ('Pendiente', 'Comandado', 'Listo', 'Entregado')
+            WHERE empresa_id = %s AND estado IN ('Comandado', 'Listo', 'Entregado')
         );
     """, (empresa_id, empresa_id))
     conex.commit()
@@ -206,11 +208,12 @@ def gestionar_mesas():
         conex.close()
         return redirect(url_for('caja_mesas.gestionar_mesas'))
         
+    # CORRECCIÓN: Solo sumamos en el total acumulado de la mesa los productos que ya están COMANDADOS, LISTOS o ENTREGADOS.
     cursor.execute("""
         SELECT m.id, m.numero_mesa, m.estado, m.mesero_atendiendo,
-               COALESCE(SUM(CASE WHEN p.estado IN ('Pendiente', 'Comandado', 'Listo', 'Entregado') THEN p.precio * p.cantidad ELSE 0 END), 0) AS total_acumulado
+               COALESCE(SUM(CASE WHEN p.estado IN ('Comandado', 'Listo', 'Entregado') THEN p.precio * p.cantidad ELSE 0 END), 0) AS total_acumulado
         FROM mesas m
-        LEFT JOIN pedidos_mesa p ON m.id = p.id_mesa AND p.estado IN ('Pendiente', 'Comandado', 'Listo', 'Entregado')
+        LEFT JOIN pedidos_mesa p ON m.id = p.id_mesa AND p.estado IN ('Comandado', 'Listo', 'Entregado')
         WHERE m.empresa_id = %s
         GROUP BY m.id, m.numero_mesa, m.estado, m.mesero_atendiendo
         ORDER BY m.id ASC;
@@ -283,9 +286,9 @@ def mesas_json_general():
         
         cursor.execute("""
             SELECT m.id, m.numero_mesa, m.estado, m.mesero_atendiendo,
-                   COALESCE(SUM(CASE WHEN p.estado IN ('Pendiente', 'Comandado', 'Listo', 'Entregado') THEN p.precio * p.cantidad ELSE 0 END), 0) AS total_acumulado
+                   COALESCE(SUM(CASE WHEN p.estado IN ('Comandado', 'Listo', 'Entregado') THEN p.precio * p.cantidad ELSE 0 END), 0) AS total_acumulado
             FROM mesas m
-            LEFT JOIN pedidos_mesa p ON m.id = p.id_mesa AND p.estado IN ('Pendiente', 'Comandado', 'Listo', 'Entregado')
+            LEFT JOIN pedidos_mesa p ON m.id = p.id_mesa AND p.estado IN ('Comandado', 'Listo', 'Entregado')
             WHERE m.empresa_id = %s
             GROUP BY m.id, m.numero_mesa, m.estado, m.mesero_atendiendo
             ORDER BY m.id ASC;
@@ -439,7 +442,6 @@ def abrir_pedido(id_mesa):
         subtotal = float(p[4])
         if p[5] in ['Pendiente', 'Comandado', 'Listo', 'Entregado']:
             total_acumulado += subtotal
-        # CORRECCIÓN CLAVE: Aseguramos que detecte cualquier item 'Pendiente' para activar los botones de comandar
         if str(p[5]).strip().lower() == 'pendiente':
             hay_pendientes_comandar = True
         pedidos.append({
