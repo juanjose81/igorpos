@@ -124,7 +124,6 @@ def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, cliente_nit, id_ve
     for item in items:
         detalle_items += f"   • {item['cantidad']}x {item['producto']} — ${item['subtotal']:,.2f}\n"
         
-    # URL REAL DE RENDER ASEGURADA (FORZADA PARA EVITAR DEMOS)
     base_url = request.host_url.rstrip('/')
     if "onrender.com" not in base_url and "localhost" not in base_url:
         base_url = "https://igorpos.onrender.com"
@@ -440,7 +439,8 @@ def abrir_pedido(id_mesa):
         subtotal = float(p[4])
         if p[5] in ['Pendiente', 'Comandado', 'Listo', 'Entregado']:
             total_acumulado += subtotal
-        if p[5] == 'Pendiente':
+        # CORRECCIÓN CLAVE: Aseguramos que detecte cualquier item 'Pendiente' para activar los botones de comandar
+        if str(p[5]).strip().lower() == 'pendiente':
             hay_pendientes_comandar = True
         pedidos.append({
             'id': p[0],
@@ -701,7 +701,6 @@ def cerrar_facturar_mesa(id_mesa):
     items_raw = cursor.fetchall()
     items_lista = [{'producto': r[0], 'cantidad': r[1], 'subtotal': float(r[2])} for r in items_raw]
     
-    # URL REAL DE RENDER ASEGURADA
     base_url = request.host_url.rstrip('/')
     if "onrender.com" not in base_url and "localhost" not in base_url:
         base_url = "https://igorpos.onrender.com"
