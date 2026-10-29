@@ -89,7 +89,8 @@
                         <div class="card-header">
                             <span>🍽️ {{ p.mesa | capitalize }}</span>
                             <div style="display: flex; gap: 6px; align-items: center;">
-                                <span class="badge-timer temporizador-comanda" data-id="{{ p.id }}">
+                                <!-- CORRECCIÓN AQUÍ: Usamos data-fecha igual que en Bar para leer el tiempo real oficial -->
+                                <span class="badge-timer temporizador-comanda" data-fecha="{{ p.fecha_comandado }}">
                                     ⏱️ <span class="tiempo-transcurrido">00:00</span>
                                 </span>
                                 <span class="badge">{{ p.estado }}</span>
@@ -114,28 +115,18 @@
             const menu = document.getElementById('menuLateral');
             menu.classList.toggle('abierto');
         }
-
-        // Mapa global para persistir el tiempo de inicio exacto de cada comanda en la pantalla
-        const tiemposComandas = JSON.parse(localStorage.getItem('tiemposComandas') || '{}');
-
+        
         function actualizarTemporizadores() {
             const elementos = document.querySelectorAll('.temporizador-comanda');
-            let guardadoNecesario = false;
             
             elementos.forEach(el => {
-                const idPedido = el.getAttribute('data-id');
-                if (!idPedido) return;
-
-                const ahora = Date.now();
+                const fechaStr = el.getAttribute('data-fecha');
+                if (!fechaStr) return;
                 
-                // Si el pedido no tiene un tiempo registrado, se lo asignamos ahora mismo
-                if (!tiemposComandas[idPedido]) {
-                    tiemposComandas[idPedido] = ahora;
-                    guardadoNecesario = true;
-                }
-
-                const tiempoInicio = tiemposComandas[idPedido];
-                let diffSegundos = Math.floor((ahora - tiempoInicio) / 1000);
+                const fechaComanda = new Date(fechaStr);
+                const ahora = new Date();
+                
+                let diffSegundos = Math.floor((ahora - fechaComanda) / 1000);
                 if (diffSegundos < 0) diffSegundos = 0;
                 
                 const minutos = Math.floor(diffSegundos / 60);
@@ -161,12 +152,8 @@
                     el.style.color = '#38bdf8';
                 }
             });
-
-            if (guardadoNecesario) {
-                localStorage.setItem('tiemposComandas', JSON.stringify(tiemposComandas));
-            }
         }
-
+        
         // Ejecutar el temporizador cada segundo en tiempo real
         setInterval(actualizarTemporizadores, 1000);
         actualizarTemporizadores();
