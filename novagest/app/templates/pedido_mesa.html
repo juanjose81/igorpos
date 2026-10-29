@@ -413,7 +413,6 @@ async function recargarConsumoMesaAJAX() {
     if (inputTotal) inputTotal.value = data.total;
     if (inputRecibido) inputRecibido.value = data.total;
     
-    // Si cambia de vacío a tener ítems o viceversa, recargamos limpio para que el botón aparezca/desaparezca perfecto
     const hayItemsActuales = data.pedidos && data.pedidos.length > 0;
     const botonComandarActual = document.querySelector('button[name="enviar_comanda"]');
     if ((hayItemsActuales && !botonComandarActual) || (!hayItemsActuales && botonComandarActual)) {
@@ -459,10 +458,21 @@ function vincularFormulariosAJAX() {
     });
   });
 }
+
 document.addEventListener('DOMContentLoaded', function() {
   calcularVueltos();
   toggleDatosCliente();
   vincularFormulariosAJAX();
+
+  // 🔄 AUTO-REFRESCO INTELIGENTE EN SEGUNDO PLANO (CADA 4 SEGUNDOS)
+  setInterval(() => {
+    const modalAbierto = document.querySelector('.modal.show');
+    const buscadorActivo = document.activeElement === document.getElementById('buscadorProductos');
+    
+    if (!modalAbierto && !buscadorActivo) {
+      recargarConsumoMesaAJAX();
+    }
+  }, 4000);
 });
 </script>
 </body>
