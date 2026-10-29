@@ -89,7 +89,6 @@
                         <div class="card-header">
                             <span>🍽️ {{ p.mesa | capitalize }}</span>
                             <div style="display: flex; gap: 6px; align-items: center;">
-                                <!-- CORRECCIÓN AQUÍ: Usamos data-fecha igual que en Bar para leer el tiempo real oficial -->
                                 <span class="badge-timer temporizador-comanda" data-fecha="{{ p.fecha_comandado }}">
                                     ⏱️ <span class="tiempo-transcurrido">00:00</span>
                                 </span>
@@ -123,9 +122,12 @@
                 const fechaStr = el.getAttribute('data-fecha');
                 if (!fechaStr) return;
                 
-                const fechaComanda = new Date(fechaStr);
-                const ahora = new Date();
+                let fechaLimpia = fechaStr.replace('et ', 'T').replace(' ', 'T');
+                const fechaComanda = new Date(fechaLimpia);
                 
+                if (isNaN(fechaComanda.getTime())) return;
+                
+                const ahora = new Date();
                 let diffSegundos = Math.floor((ahora - fechaComanda) / 1000);
                 if (diffSegundos < 0) diffSegundos = 0;
                 
@@ -140,7 +142,6 @@
                     spanTiempo.textContent = `${minStr}:${segStr}`;
                 }
                 
-                // Alertas de color según los minutos transcurridos
                 if (minutos >= 15) {
                     el.style.backgroundColor = '#dc2626';
                     el.style.color = '#fff';
@@ -154,7 +155,6 @@
             });
         }
         
-        // Ejecutar el temporizador cada segundo en tiempo real
         setInterval(actualizarTemporizadores, 1000);
         actualizarTemporizadores();
     </script>

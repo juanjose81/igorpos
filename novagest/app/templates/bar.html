@@ -114,31 +114,34 @@
             const menu = document.getElementById('menuLateral');
             menu.classList.toggle('abierto');
         }
-
+        
         function actualizarTemporizadores() {
             const elementos = document.querySelectorAll('.temporizador-comanda');
             
             elementos.forEach(el => {
                 const fechaStr = el.getAttribute('data-fecha');
                 if (!fechaStr) return;
-
-                const fechaComanda = new Date(fechaStr);
-                const ahora = new Date();
                 
+                let fechaLimpia = fechaStr.replace('et ', 'T').replace(' ', 'T');
+                const fechaComanda = new Date(fechaLimpia);
+                
+                if (isNaN(fechaComanda.getTime())) return;
+                
+                const ahora = new Date();
                 let diffSegundos = Math.floor((ahora - fechaComanda) / 1000);
                 if (diffSegundos < 0) diffSegundos = 0;
-
+                
                 const minutos = Math.floor(diffSegundos / 60);
                 const segundos = diffSegundos % 60;
-
+                
                 const minStr = String(minutos).padStart(2, '0');
                 const segStr = String(segundos).padStart(2, '0');
-
+                
                 const spanTiempo = el.querySelector('.tiempo-transcurrido');
                 if (spanTiempo) {
                     spanTiempo.textContent = `${minStr}:${segStr}`;
                 }
-
+                
                 if (minutos >= 15) {
                     el.style.backgroundColor = '#dc2626';
                     el.style.color = '#fff';
@@ -151,7 +154,7 @@
                 }
             });
         }
-
+        
         setInterval(actualizarTemporizadores, 1000);
         actualizarTemporizadores();
     </script>
