@@ -1,3 +1,7 @@
+-- ==========================================================
+-- SCRIPT COMPLETO Y UNIFICADO PARA IGOR POS (NOVAGEST_DB)
+-- ==========================================================
+
 -- TABLA DE INQUILINOS / NEGOCIOS (SaaS Multi-tenant)
 CREATE TABLE IF NOT EXISTS empresas (
     id SERIAL PRIMARY KEY,
@@ -19,13 +23,14 @@ CREATE TABLE IF NOT EXISTS usuarios (
     rol VARCHAR(20) DEFAULT 'CAJERO' CHECK (rol IN ('ADMIN', 'CAJERO', 'MESERO'))
 );
 
--- CATEGORÍAS Y PRODUCTOS
+-- CATEGORÍAS
 CREATE TABLE IF NOT EXISTS categorias (
     id SERIAL PRIMARY KEY,
     empresa_id INT REFERENCES empresas(id) ON DELETE CASCADE,
     nombre VARCHAR(50) NOT NULL
 );
 
+-- PRODUCTOS (Versión robusta y unificada con soporte multi-tenant)
 CREATE TABLE IF NOT EXISTS productos (
     id SERIAL PRIMARY KEY,
     empresa_id INT REFERENCES empresas(id) ON DELETE CASCADE,
@@ -89,38 +94,28 @@ CREATE TABLE IF NOT EXISTS historial_inventario (
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
--- Tabla para que cada negocio configure sus mesas
+-- CONFIGURACIÓN DE MESAS (Para gastronomía/restaurantes)
 CREATE TABLE IF NOT EXISTS mesas_config (
     id SERIAL PRIMARY KEY,
     nombre_mesa VARCHAR(50) NOT NULL,
     estado VARCHAR(20) DEFAULT 'Libre'
 );
 
--- Tabla para el inventario, productos y precios
-CREATE TABLE IF NOT EXISTS productos (
-    id SERIAL PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
-    precio NUMERIC(10, 2) NOT NULL,
-    stock INT DEFAULT 0
-);
-
-
--- Tabla para registrar los clientes que consumen o compran
+-- CLIENTES
 CREATE TABLE IF NOT EXISTS clientes (
     id SERIAL PRIMARY KEY,
     nombre_completo VARCHAR(150) NOT NULL,
     identificacion VARCHAR(50) NOT NULL
 );
 
--- Tabla para guardar el encabezado de la factura y el pago
+-- FACTURAS
 CREATE TABLE IF NOT EXISTS facturas (
     id SERIAL PRIMARY KEY,
     cliente_id INT REFERENCES clientes(id),
     subtotal NUMERIC(10, 2) NOT NULL,
     propina NUMERIC(10, 2) NOT NULL,
     total NUMERIC(10, 2) NOT NULL,
-    metodo_pago VARCHAR(30) NOT NULL, -- 'Efectivo', 'Transferencia', 'Debito', 'Credito'
+    metodo_pago VARCHAR(30) NOT NULL,
     efectivo_recibido NUMERIC(10, 2) DEFAULT 0,
     cambio_devuelto NUMERIC(10, 2) DEFAULT 0,
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
