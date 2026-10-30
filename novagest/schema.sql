@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS ventas (
     caja_id INT REFERENCES cajas(id),
     usuario_id INT REFERENCES usuarios(id),
     subtotal NUMERIC(12, 2) NOT NULL,
-    descuento NUMERIC(12, 2) DEFAULT 0,
+    desconto NUMERIC(12, 2) DEFAULT 0,
     total NUMERIC(12, 2) NOT NULL,
     efectivo_entregado NUMERIC(12, 2) DEFAULT 0,
     cambio_devuelto NUMERIC(12, 2) DEFAULT 0,
