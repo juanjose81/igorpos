@@ -34,6 +34,10 @@ def asegurar_tablas_globales(cursor, conex):
         );
     """)
     cursor.execute("ALTER TABLE historial_ventas ADD COLUMN IF NOT EXISTS empresa_id INT;")
+    cursor.execute("ALTER TABLE historial_ventas ADD COLUMN IF NOT EXISTS propina NUMERIC(12,2) DEFAULT 0.00;")
+    cursor.execute("ALTER TABLE historial_ventas ADD COLUMN IF NOT EXISTS cliente_nombre VARCHAR(150) DEFAULT 'Consumidor Final';")
+    cursor.execute("ALTER TABLE historial_ventas ADD COLUMN IF NOT EXISTS cliente_nit VARCHAR(50) DEFAULT '222222222222';")
+    cursor.execute("ALTER TABLE historial_ventas ADD COLUMN IF NOT EXISTS cliente_telefono VARCHAR(50);")
     
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS mesas (
@@ -386,8 +390,6 @@ def abrir_pedido(id_mesa):
                 
     if request.method == 'POST' and 'enviar_comanda' in request.form:
         try:
-            # BLINDAJE DE TIEMPO REAL: Al comandar, establecemos la fecha y hora oficial exacta (NOW()) 
-            # para que el cronómetro corra real y no se reinicie al cambiar de cuenta o recargar.
             cursor.execute("""
                 UPDATE pedidos_mesa 
                 SET estado = 'Comandado', fecha_comandado = NOW() 
@@ -665,11 +667,16 @@ def cerrar_facturar_mesa(id_mesa):
     tipo_pago = request.form.get('tipo_pago', 'Efectivo')
     efectivo_recibido = float(request.form.get('efectivo_recibido', 0))
     
+    # NUEVO: Capturar propina opcional (si está vacía, pasa a 0.0)
+    propina_raw = request.form.get('propina', '').strip()
+    propina = float(propina_raw) if propina_raw != '' else 0.0
+    
     desea_factura_impresa = request.form.get('desea_factura_impresa') == 'si'
     es_electronica = request.form.get('es_electronica') == 'si'
     
-    cliente_nombre = request.form.get('cliente_nombre', '').strip()
-    cliente_nit = request.form.get('cliente_nit', '').strip()
+    # Capturar datos fiscales del cliente desde el modal
+    cliente_nombre = request.form.get('cliente_nombre', '').strip() or 'Consumidor Final'
+    cliente_nit = request.form.get('cliente_nit', '').strip() or '222222222222'
     cliente_telefono = request.form.get('cliente_telefono', '').strip()
     
     conex = get_db_connection()
@@ -681,13 +688,16 @@ def cerrar_facturar_mesa(id_mesa):
         SELECT COALESCE(SUM(precio * cantidad), 0) FROM pedidos_mesa 
         WHERE empresa_id = %s AND id_mesa = %s AND estado IN ('Pendiente', 'Comandado', 'Listo', 'Entregado');
     """, (empresa_id, id_mesa))
-    total_venta = float(cursor.fetchone()[0])
-    if total_venta == 0:
+    subtotal_productos = float(cursor.fetchone()[0])
+    if subtotal_productos == 0:
         cursor.close()
         conex.close()
         return redirect(url_for('caja_mesas.gestionar_mesas'))
         
+    # NUEVO: El total de venta incluye subtotal de productos + propina
+    total_venta = subtotal_productos + propina
     devueltas = max(0.0, efectivo_recibido - total_venta)
+
     cursor.execute("SELECT numero_mesa, mesero_atendiendo FROM mesas WHERE id = %s AND empresa_id = %s;", (id_mesa, empresa_id))
     datos_mesa = cursor.fetchone()
     num_mesa_str = datos_mesa[0]
@@ -697,10 +707,19 @@ def cerrar_facturar_mesa(id_mesa):
     if not mesero_atendio or mesero_atendio.strip() == '' or mesero_atendio == 'Sin asignar':
         mesero_atendio = usuario_sesion
     
+    # NUEVO: Guardar en historial_ventas con propina y datos del cliente
     cursor.execute("""
-        INSERT INTO historial_ventas (empresa_id, id_mesa, numero_mesa, total_venta, tipo_pago, efectivo_recibido, devueltas, atendido_por, fecha_venta)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW()) RETURNING id;
-    """, (empresa_id, id_mesa, num_mesa_str, total_venta, tipo_pago, efectivo_recibido, devueltas, mesero_atendio))
+        INSERT INTO historial_ventas (
+            empresa_id, id_mesa, numero_mesa, total_venta, tipo_pago, 
+            efectivo_recibido, devueltas, atendido_por, fecha_venta, 
+            propina, cliente_nombre, cliente_nit, cliente_telefono
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s, %s, %s, %s) RETURNING id;
+    """, (
+        empresa_id, id_mesa, num_mesa_str, total_venta, tipo_pago, 
+        efectivo_recibido, devueltas, mesero_atendio, 
+        propina, cliente_nombre, cliente_nit, cliente_telefono
+    ))
     id_venta = cursor.fetchone()[0]
     
     cursor.execute("""
@@ -926,8 +945,10 @@ def imprimir_ticket(id_venta):
     asegurar_tablas_globales(cursor, conex)
     empresa_id = obtener_empresa_id_seguro(cursor)
     
+    # NUEVO: Traer propina y datos fiscales del cliente guardados
     cursor.execute("""
-        SELECT id, numero_mesa, total_venta, tipo_pago, efectivo_recibido, devueltas, atendido_por, fecha_venta, id_mesa
+        SELECT id, numero_mesa, total_venta, tipo_pago, efectivo_recibido, devueltas, atendido_por, fecha_venta, id_mesa,
+               COALESCE(propina, 0), COALESCE(cliente_nombre, 'Consumidor Final'), COALESCE(cliente_nit, '222222222222'), cliente_telefono
         FROM historial_ventas WHERE id = %s AND empresa_id = %s;
     """, (id_venta, empresa_id))
     v = cursor.fetchone()
@@ -935,6 +956,7 @@ def imprimir_ticket(id_venta):
         cursor.close()
         conex.close()
         return "Venta no encontrada", 404
+        
     venta = {
         'id': v[0],
         'numero_mesa': v[1],
@@ -943,8 +965,13 @@ def imprimir_ticket(id_venta):
         'efectivo_recibido': float(v[4]),
         'devueltas': float(v[5]),
         'atendido_por': v[6],
-        'fecha_venta': v[7]
+        'fecha_venta': v[7],
+        'propina': float(v[9]),
+        'cliente_nombre': v[10],
+        'cliente_nit': v[11],
+        'cliente_telefono': v[12]
     }
+    
     cursor.execute("""
         SELECT producto, SUM(cantidad) as total_cantidad, precio, SUM(precio * cantidad) as subtotal
         FROM pedidos_mesa 
@@ -962,14 +989,20 @@ def imprimir_ticket(id_venta):
             ORDER BY producto ASC;
         """, (v[8], empresa_id))
         items_raw = cursor.fetchall()
+        
     items = []
+    subtotal_calculado = 0
     for it in items_raw:
+        sub = float(it[3])
+        subtotal_calculado += sub
         items.append({
             'producto': it[0],
             'cantidad': int(it[1]),
             'precio': float(it[2]),
-            'subtotal': float(it[3])
+            'subtotal': sub
         })
+        
+    venta['subtotal_productos'] = subtotal_calculado
     cursor.close()
     conex.close()
     

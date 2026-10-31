@@ -40,11 +40,9 @@
   <div class="card p-3 shadow-sm bg-dark text-white border-secondary mx-auto" style="max-width: 420px; border-radius: 10px;">
     <h6 class="text-info fw-bold mb-2">🖨️ Selecciona Método de Impresión</h6>
     <div class="d-flex justify-content-center gap-2 flex-wrap mb-2">
-      <!-- Opción 1: Impresora Real / Cable USB / Red -->
       <button onclick="imprimirSistema()" class="btn btn-success btn-sm fw-bold">
         <i class="bi bi-printer-fill"></i> Impresora Física (Cable/Red)
       </button>
-      <!-- Opción 2: Impresora Inalámbrica Bluetooth -->
       <button onclick="imprimirBluetooth()" class="btn btn-primary btn-sm fw-bold">
         <i class="bi bi-bluetooth"></i> Bluetooth Térmica
       </button>
@@ -62,6 +60,7 @@
     </div>
   </div>
 </div>
+
 <!-- TICKET FÍSICO IMPRIMIBLE -->
 <div class="ticket-container" id="ticketImprimible">
   <div class="text-center mb-3">
@@ -70,11 +69,20 @@
     <small>Factura de Venta N°: #{{ venta.id }}</small><br>
     <small>Fecha: {{ venta.fecha_venta }}</small>
   </div>
+
   <div class="border-top border-bottom py-2 my-2 small">
     <div><strong>Mesa:</strong> {{ venta.numero_mesa }}</div>
     <div><strong>Atendido por:</strong> {{ venta.atendido_por }}</div>
     <div><strong>Forma de Pago:</strong> {{ venta.tipo_pago }}</div>
+    <div class="mt-2 pt-1 border-top">
+      <div><strong>CLIENTE:</strong> {{ venta.cliente_nombre }}</div>
+      <div><strong>NIT/CC:</strong> {{ venta.cliente_nit }}</div>
+      {% if venta.cliente_telefono %}
+        <div><strong>Tel:</strong> {{ venta.cliente_telefono }}</div>
+      {% endif %}
+    </div>
   </div>
+
   <table class="table table-borderless table-sm small mb-2">
     <thead>
       <tr class="border-bottom">
@@ -91,8 +99,22 @@
       {% endfor %}
     </tbody>
   </table>
+
+  <!-- MONTOS CON SUBTOTAL, PROPINA Y TOTAL -->
   <div class="border-top pt-2 small">
-    <div class="d-flex justify-content-between fw-bold fs-6">
+    <div class="d-flex justify-content-between">
+      <span>Subtotal:</span>
+      <span>${{ "{:,.2f}".format(venta.subtotal_productos) }}</span>
+    </div>
+
+    {% if venta.propina and venta.propina > 0 %}
+    <div class="d-flex justify-content-between text-success fw-bold">
+      <span>Propina:</span>
+      <span>${{ "{:,.2f}".format(venta.propina) }}</span>
+    </div>
+    {% endif %}
+
+    <div class="d-flex justify-content-between fw-bold fs-6 border-top mt-1 pt-1">
       <span>TOTAL:</span>
       <span>${{ "{:,.2f}".format(venta.total_venta) }}</span>
     </div>
@@ -106,7 +128,7 @@
     </div>
   </div>
 
-  <!-- 🟢 BLOQUE QR GENERAL PARA TODAS LAS FACTURAS -->
+  <!-- BLOQUE QR GENERAL -->
   <div class="border-top border-bottom py-2 my-3 text-center small">
     <p class="fw-bold mb-1" style="font-size: 11px;">VERIFICA TU FACTURA</p>
     <div class="my-2">
@@ -115,7 +137,7 @@
     <small class="text-muted d-block">Escanea para verificar compra</small>
   </div>
 
-  <!-- BLOQUE DE FACTURA ELECTRÓNICA DIAN (SI APLICA) -->
+  <!-- BLOQUE FACTURA ELECTRÓNICA DIAN -->
   {% if factura_electronica and factura_electronica.exito %}
   <div class="border-bottom pb-2 mb-3 text-center small">
     <p class="fw-bold mb-1" style="font-size: 11px;">FACTURA ELECTRÓNICA DIAN</p>
@@ -134,13 +156,11 @@
     <small>Sistema IGOR POS v2.0</small>
   </div>
 </div>
-<!-- SCRIPTS DE IMPRESIÓN INTELIGENTE -->
+
 <script>
-  // 1. Impresión por Impresora Física Real (USB / Red / Driver del Sistema)
   function imprimirSistema() {
     window.print();
   }
-  // 2. Impresión por Bluetooth para impresoras térmicas portátiles inalámbricas
   async function imprimirBluetooth() {
     try {
       const device = await navigator.bluetooth.requestDevice({
@@ -159,12 +179,11 @@
       alert("✅ Factura enviada a la impresora Bluetooth correctamente.");
     } catch (err) {
       console.error(err);
-      alert("⚠️ No se pudo conectar a la impresora Bluetooth. Verifica que esté encendida, vinculada y uses un navegador compatible (como Chrome).");
+      alert("⚠️ No se pudo conectar a la impresora Bluetooth. Verifica que esté encendida, vinculada y uses un navegador compatible.");
     }
   }
-  // Carga automática al abrir el ticket y manejo opcional de WhatsApp
   window.addEventListener('load', function() {
-    window.print(); // Abre el diálogo nativo por defecto al facturar
+    window.print();
     const linkWa = document.getElementById('bodyTicket').getAttribute('data-link-wa');
     if (linkWa && linkWa.trim() !== '') {
       window.open(linkWa, '_blank');
