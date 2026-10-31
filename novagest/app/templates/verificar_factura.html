@@ -28,7 +28,6 @@
             border-radius: 8px;
             padding: 15px;
         }
-        /* Forzar diseño oscuro y legible en la tabla */
         .table-custom {
             color: #f8fafc !important;
             background-color: transparent !important;
@@ -39,7 +38,7 @@
             border-color: #334155 !important;
         }
         .table-custom th {
-            color: #38bdf8 !important; /* Azul claro nítido para encabezados */
+            color: #38bdf8 !important;
             font-weight: 600;
         }
         .text-label-custom {
@@ -59,7 +58,7 @@
             <span class="badge bg-success mt-2 px-3 py-2"><i class="bi bi-check-circle-fill"></i> Transacción Verificada en Sistema</span>
         </div>
 
-        <!-- Datos Generales de la Venta -->
+        <!-- Datos Generales de la Venta y Cliente -->
         <div class="info-box mb-3 small">
             <div class="d-flex justify-content-between mb-2">
                 <span class="text-label-custom">Factura N°:</span>
@@ -77,10 +76,36 @@
                 <span class="text-label-custom">Atendido por:</span>
                 <span class="text-white">{{ venta.atendido_por }}</span>
             </div>
-            <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top border-secondary">
+            <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-secondary">
                 <span class="text-label-custom">Forma de Pago:</span>
                 <span class="badge bg-primary text-uppercase">{{ venta.tipo_pago }}</span>
             </div>
+
+            {% if venta.cliente_nombre %}
+            <div class="mt-3 pt-2 border-top border-secondary">
+                <div class="fw-bold text-info mb-1"><i class="bi bi-person-check-fill"></i> Datos del Cliente:</div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-label-custom">Nombre:</span>
+                    <span class="text-white">{{ venta.cliente_nombre }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-label-custom">NIT / CC:</span>
+                    <span class="text-white">{{ venta.cliente_nit }}</span>
+                </div>
+                {% if venta.cliente_correo %}
+                <div class="d-flex justify-content-between">
+                    <span class="text-label-custom">Correo:</span>
+                    <span class="text-white">{{ venta.cliente_correo }}</span>
+                </div>
+                {% endif %}
+                {% if venta.cliente_telefono %}
+                <div class="d-flex justify-content-between">
+                    <span class="text-label-custom">Teléfono / WA:</span>
+                    <span class="text-white">{{ venta.cliente_telefono }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
 
         <!-- Detalle de Consumo -->
@@ -106,9 +131,19 @@
             </table>
         </div>
 
-        <!-- Total Pagado -->
+        <!-- Montos: Subtotal, Propina y Total -->
         <div class="info-box mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="d-flex justify-content-between small mb-1">
+                <span class="text-label-custom">Subtotal Productos:</span>
+                <span class="text-white fw-bold">${{ "{:,.2f}".format(venta.subtotal_productos) }}</span>
+            </div>
+            {% if venta.propina and venta.propina > 0 %}
+            <div class="d-flex justify-content-between small mb-2 text-success fw-bold">
+                <span>Propina Voluntaria:</span>
+                <span>+${{ "{:,.2f}".format(venta.propina) }}</span>
+            </div>
+            {% endif %}
+            <div class="d-flex justify-content-between align-items-center mb-2 pt-2 border-top border-secondary">
                 <span class="fw-bold text-white fs-5">TOTAL PAGADO:</span>
                 <span class="fw-bold text-success fs-4">${{ "{:,.2f}".format(venta.total_venta) }}</span>
             </div>
@@ -120,6 +155,12 @@
                 <span class="text-label-custom">Cambio / Vueltos:</span>
                 <span class="text-white fw-bold">${{ "{:,.2f}".format(venta.devueltas) }}</span>
             </div>
+        </div>
+
+        <!-- Código QR de Verificación -->
+        <div class="text-center my-3 p-3 bg-white rounded-3">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=https://igorpos.onrender.com/admin/verificar-factura/{{ venta.id }}" alt="QR Verificación" class="img-fluid mb-2">
+            <div class="text-dark fw-bold small">Escanear para verificar compra</div>
         </div>
 
         <!-- Pie de página -->
