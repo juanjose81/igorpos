@@ -1,107 +1,134 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Factura Oficial #{{ venta.id }} - IGOR POS</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-  <style>
-    body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    .verification-card { max-width: 550px; margin: 40px auto; background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
-    .brand-title { font-size: 1.4rem; font-weight: 800; color: #38bdf8; letter-spacing: 0.5px; }
-    .table-dark { background-color: transparent; }
-    .badge-pago { font-size: 0.85rem; padding: 6px 12px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recibo Oficial - IGOR POS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px 0;
+        }
+        .receipt-card {
+            max-width: 480px;
+            margin: 0 auto;
+            background: #1e293b;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 1px solid #334155;
+            padding: 25px;
+        }
+        .info-box {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .table-custom {
+            color: #f8fafc;
+        }
+        .table-custom th {
+            border-color: #334155;
+            color: #94a3b8;
+        }
+        .table-custom td {
+            border-color: #334155;
+            color: #f8fafc;
+        }
+    </style>
 </head>
 <body>
-  <div class="container py-4">
-    <div class="verification-card">
-      
-      <!-- Cabecera Oficial -->
-      <div class="text-center mb-4 border-bottom border-secondary pb-3">
-        <i class="bi bi-shield-check text-success display-5"></i>
-        <h3 class="fw-bold mt-2 text-white">Recibo de Venta Oficial</h3>
-        <p class="brand-title mb-0">IGOR POS 🚀</p>
-        <span class="badge bg-success text-white mt-2"><i class="bi bi-patch-check-fill"></i> Transacción Verificada en Sistema</span>
-      </div>
 
-      <!-- Datos Generales de la Factura -->
-      <div class="bg-dark p-3 rounded-3 mb-3 border border-secondary small">
-        <div class="d-flex justify-content-between mb-2">
-          <span class="text-muted">No. de Factura / Venta:</span>
-          <span class="fw-bold text-info fs-6">#{{ venta.id }}</span>
+<div class="container">
+    <div class="receipt-card">
+        <!-- Encabezado -->
+        <div class="text-center mb-4">
+            <h3 class="fw-bold text-white mb-1">Recibo de Venta Oficial</h3>
+            <h4 class="text-info fw-bold">IGOR POS 🚀</h4>
+            <span class="badge bg-success mt-2 px-3 py-2"><i class="bi bi-check-circle-fill"></i> Transacción Verificada en Sistema</span>
         </div>
-        <div class="d-flex justify-content-between mb-2">
-          <span class="text-muted">Fecha y Hora:</span>
-          <span class="text-white fw-semibold">{{ venta.fecha_venta }}</span>
-        </div>
-        <div class="d-flex justify-content-between mb-2">
-          <span class="text-muted">Ubicación / Mesa:</span>
-          <span class="text-white fw-semibold">{{ venta.numero_mesa }}</span>
-        </div>
-        <div class="d-flex justify-content-between mb-2">
-          <span class="text-muted">Atendido por:</span>
-          <span class="text-white fw-semibold">{{ venta.atendido_por }}</span>
-        </div>
-        <div class="d-flex justify-content-between align-items-center">
-          <span class="text-muted">Método de Pago:</span>
-          <span class="badge bg-primary badge-pago text-uppercase">{{ venta.tipo_pago }}</span>
-        </div>
-      </div>
 
-      <!-- Tabla de Productos Consumidos -->
-      <h5 class="fw-bold text-success mb-2 fs-6"><i class="bi bi-basket-fill"></i> Detalle del Consumo</h5>
-      <div class="table-responsive mb-3">
-        <table class="table table-dark table-sm align-middle mb-0">
-          <thead>
-            <tr class="border-secondary text-info small">
-              <th>Producto</th>
-              <th class="text-center">Cant</th>
-              <th class="text-end">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in items %}
-            <tr>
-              <td class="fw-medium">{{ item.producto }}</td>
-              <td class="text-center text-white-50">{{ item.cantidad }}</td>
-              <td class="text-end text-warning fw-semibold">${{ "{:,.2f}".format(item.subtotal) }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Totales y Pagos -->
-      <div class="bg-dark p-3 rounded-3 border border-secondary mb-4">
-        <div class="d-flex justify-content-between fw-bold fs-5 mb-2 border-bottom border-secondary pb-2">
-          <span class="text-white">TOTAL PAGADO:</span>
-          <span class="text-success">${{ "{:,.2f}".format(venta.total_venta) }}</span>
+        <!-- Datos Generales de la Venta -->
+        <div class="info-box mb-3 small">
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Factura N°:</span>
+                <span class="fw-bold text-info">#{{ venta.id }}</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Fecha y Hora:</span>
+                <span class="text-white">{{ venta.fecha_venta }}</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Mesa / Atención:</span>
+                <span class="text-white text-uppercase font-weight-bold">Mesa {{ venta.numero_mesa }}</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Atendido por:</span>
+                <span class="text-white">{{ venta.atendido_por }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top border-secondary">
+                <span class="text-muted">Forma de Pago:</span>
+                <span class="badge bg-primary text-uppercase">{{ venta.tipo_pago }}</span>
+            </div>
         </div>
-        <div class="d-flex justify-content-between small text-muted mb-1">
-          <span>Efectivo Recibido:</span>
-          <span class="text-white">${{ "{:,.2f}".format(venta.efectivo_recibido) }}</span>
+
+        <!-- Detalle de Consumo -->
+        <h6 class="text-info fw-bold mb-2"><i class="bi bi-basket"></i> Detalle del Consumo</h6>
+        <div class="table-responsive mb-3">
+            <table class="table table-custom table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th class="text-center">Cant</th>
+                        <th class="text-end">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>{{ item.producto }}</td>
+                        <td class="text-center">{{ item.cantidad }}</td>
+                        <td class="text-end text-warning">${{ "{:,.2f}".format(item.subtotal) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-        <div class="d-flex justify-content-between small text-muted">
-          <span>Cambio / Vueltos:</span>
-          <span class="text-white">${{ "{:,.2f}".format(venta.devueltas) }}</span>
+
+        <!-- Total Pagado -->
+        <div class="info-box mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-bold text-white fs-5">TOTAL PAGADO:</span>
+                <span class="fw-bold text-success fs-4">${{ "{:,.2f}".format(venta.total_venta) }}</span>
+            </div>
+            <div class="d-flex justify-content-between small text-muted border-top border-secondary pt-2 mt-2">
+                <span>Efectivo Recibido:</span>
+                <span class="text-white">${{ "{:,.2f}".format(venta.efectivo_recibido) }}</span>
+            </div>
+            <div class="d-flex justify-content-between small text-muted">
+                <span>Cambio / Vueltos:</span>
+                <span class="text-white">${{ "{:,.2f}".format(venta.devueltas) }}</span>
+            </div>
         </div>
-      </div>
 
-      <!-- Pie de página y botón -->
-      <div class="text-center text-muted small mb-3">
-        <p class="mb-1">Este documento es un comprobante de venta digital generado de forma automática por IGOR POS.</p>
-        <span class="text-info">¡Gracias por su compra y preferencia! 🍽️</span>
-      </div>
+        <!-- Pie de página -->
+        <div class="text-center text-muted small mb-4">
+            <p class="mb-1">Este documento es un comprobante de venta digital generado de forma automática por IGOR POS.</p>
+            <p class="text-info fw-bold">¡Gracias por su compra y preferencia! 🤝</p>
+        </div>
 
-      <div class="text-center">
-        <a href="/" class="btn btn-outline-light btn-sm fw-bold px-4 py-2">
-          <i class="bi bi-house-door-fill"></i> Ir al Sitio Principal
-        </a>
-      </div>
-
+        <!-- Botón de Retorno -->
+        <div class="text-center">
+            <a href="/admin/mesas" class="btn btn-outline-light w-100 fw-bold py-2">
+                <i class="bi bi-house-door-fill"></i> Ir al Sitio Principal
+            </a>
+        </div>
     </div>
-  </div>
+</div>
+
 </body>
 </html>
