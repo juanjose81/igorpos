@@ -267,6 +267,16 @@
               <input type="text" id="inputVueltosDisplay" class="form-control form-control-lg bg-light text-primary fw-bold" value="$0.00" readonly>
             </div>
           </div>
+
+          <!-- 🟢 NUEVO: Input de Propina Personalizada (Opcional) -->
+          <div class="mb-3">
+            <label for="propina" class="form-label fw-semibold">Propina (Opcional)</label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input type="number" step="100" class="form-control" id="propina" name="propina" placeholder="0" min="0">
+            </div>
+            <small class="text-muted">Si no desea cobrar propina, déjelo en blanco o en 0.</small>
+          </div>
           
           <div class="p-3 bg-light rounded-3 border mb-3">
             <div class="form-check form-switch mb-2 ps-5">
@@ -347,7 +357,6 @@ function toggleDatosCliente() {
     }
   }
 }
-
 // 🚀 NÚCLEO INSTANTÁNEO AJAX (FETCH API):
 async function recargarConsumoMesaAJAX() {
   try {
@@ -458,12 +467,10 @@ function vincularFormulariosAJAX() {
     });
   });
 }
-
 document.addEventListener('DOMContentLoaded', function() {
   calcularVueltos();
   toggleDatosCliente();
   vincularFormulariosAJAX();
-
   // 🔄 AUTO-REFRESCO INTELIGENTE EN SEGUNDO PLANO (CADA 4 SEGUNDOS)
   setInterval(() => {
     const modalAbierto = document.querySelector('.modal.show');
