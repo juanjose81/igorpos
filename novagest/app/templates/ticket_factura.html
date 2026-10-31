@@ -60,7 +60,6 @@
     </div>
   </div>
 </div>
-
 <!-- TICKET FÍSICO IMPRIMIBLE -->
 <div class="ticket-container" id="ticketImprimible">
   <div class="text-center mb-3">
@@ -69,7 +68,6 @@
     <small>Factura de Venta N°: #{{ venta.id }}</small><br>
     <small>Fecha: {{ venta.fecha_venta }}</small>
   </div>
-
   <div class="border-top border-bottom py-2 my-2 small">
     <div><strong>Mesa:</strong> {{ venta.numero_mesa }}</div>
     <div><strong>Atendido por:</strong> {{ venta.atendido_por }}</div>
@@ -77,12 +75,14 @@
     <div class="mt-2 pt-1 border-top">
       <div><strong>CLIENTE:</strong> {{ venta.cliente_nombre }}</div>
       <div><strong>NIT/CC:</strong> {{ venta.cliente_nit }}</div>
+      {% if venta.cliente_correo %}
+        <div><strong>Correo:</strong> {{ venta.cliente_correo }}</div>
+      {% endif %}
       {% if venta.cliente_telefono %}
         <div><strong>Tel:</strong> {{ venta.cliente_telefono }}</div>
       {% endif %}
     </div>
   </div>
-
   <table class="table table-borderless table-sm small mb-2">
     <thead>
       <tr class="border-bottom">
@@ -99,21 +99,18 @@
       {% endfor %}
     </tbody>
   </table>
-
   <!-- MONTOS CON SUBTOTAL, PROPINA Y TOTAL -->
   <div class="border-top pt-2 small">
     <div class="d-flex justify-content-between">
       <span>Subtotal:</span>
       <span>${{ "{:,.2f}".format(venta.subtotal_productos) }}</span>
     </div>
-
     {% if venta.propina and venta.propina > 0 %}
     <div class="d-flex justify-content-between text-success fw-bold">
       <span>Propina:</span>
       <span>${{ "{:,.2f}".format(venta.propina) }}</span>
     </div>
     {% endif %}
-
     <div class="d-flex justify-content-between fw-bold fs-6 border-top mt-1 pt-1">
       <span>TOTAL:</span>
       <span>${{ "{:,.2f}".format(venta.total_venta) }}</span>
@@ -127,7 +124,6 @@
       <span>${{ "{:,.2f}".format(venta.devueltas) }}</span>
     </div>
   </div>
-
   <!-- BLOQUE QR GENERAL -->
   <div class="border-top border-bottom py-2 my-3 text-center small">
     <p class="fw-bold mb-1" style="font-size: 11px;">VERIFICA TU FACTURA</p>
@@ -136,7 +132,6 @@
     </div>
     <small class="text-muted d-block">Escanea para verificar compra</small>
   </div>
-
   <!-- BLOQUE FACTURA ELECTRÓNICA DIAN -->
   {% if factura_electronica and factura_electronica.exito %}
   <div class="border-bottom pb-2 mb-3 text-center small">
@@ -145,18 +140,13 @@
     <div class="my-2">
       <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data={{ factura_electronica.url_factura | urlencode }}" alt="QR DIAN" style="width: 100px; height: 100px;">
     </div>
-    <p style="font-size: 7.5px; word-break: break-all; margin: 0 2px;">
-      <strong>CUFE:</strong><br>{{ factura_electronica.cufe }}
-    </p>
   </div>
   {% endif %}
-
   <div class="text-center mt-4 pt-2 border-top small">
     <p class="mb-1">¡Gracias por su compra!</p>
     <small>Sistema IGOR POS v2.0</small>
   </div>
 </div>
-
 <script>
   function imprimirSistema() {
     window.print();

@@ -3,10 +3,8 @@ import urllib.parse
 import traceback
 from app.dian_service import enviar_factura_dian_api
 from app.database import get_db_connection
-
 caja_mesas_bp = Blueprint('caja_mesas', __name__)
 NUMERO_EMISOR_POS = "3213860752"
-
 def asegurar_tablas_globales(cursor, conex):
     cursor.execute("CREATE TABLE IF NOT EXISTS caja_diaria (id SERIAL PRIMARY KEY);")
     cursor.execute("ALTER TABLE caja_diaria ADD COLUMN IF NOT EXISTS empresa_id INT;")
@@ -38,6 +36,7 @@ def asegurar_tablas_globales(cursor, conex):
     cursor.execute("ALTER TABLE historial_ventas ADD COLUMN IF NOT EXISTS cliente_nombre VARCHAR(150) DEFAULT 'Consumidor Final';")
     cursor.execute("ALTER TABLE historial_ventas ADD COLUMN IF NOT EXISTS cliente_nit VARCHAR(50) DEFAULT '222222222222';")
     cursor.execute("ALTER TABLE historial_ventas ADD COLUMN IF NOT EXISTS cliente_telefono VARCHAR(50);")
+    cursor.execute("ALTER TABLE historial_ventas ADD COLUMN IF NOT EXISTS cliente_correo VARCHAR(150);")
     
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS mesas (
@@ -88,7 +87,6 @@ def asegurar_tablas_globales(cursor, conex):
     cursor.execute("ALTER TABLE productos ADD COLUMN IF NOT EXISTS empresa_id INT;")
     cursor.execute("ALTER TABLE productos ADD COLUMN IF NOT EXISTS descripcion TEXT;")
     conex.commit()
-
 def sincronizar_estados_mesas(cursor, conex, empresa_id):
     cursor.execute("""
         UPDATE mesas 
@@ -101,7 +99,6 @@ def sincronizar_estados_mesas(cursor, conex, empresa_id):
         );
     """, (empresa_id, empresa_id))
     conex.commit()
-
 def obtener_empresa_id_seguro(cursor):
     raw_empresa = session.get('empresa_id') or session.get('usuario_id') or session.get('user_id')
     if not raw_empresa:
@@ -116,7 +113,6 @@ def obtener_empresa_id_seguro(cursor):
     except Exception:
         pass
     return 1
-
 def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, cliente_nit, id_venta, total_venta, numero_mesa, items, url_documento=None):
     if not telefono_cliente:
         return "#"
@@ -151,7 +147,6 @@ def generar_enlace_whatsapp(telefono_cliente, cliente_nombre, cliente_nit, id_ve
     
     mensaje_codificado = urllib.parse.quote(mensaje, safe='')
     return f"https://api.whatsapp.com/send?phone={tel_limpio}&text={mensaje_codificado}"
-
 @caja_mesas_bp.route('/admin/mesas', methods=['GET', 'POST'])
 def gestionar_mesas():
     user_id = session.get('usuario_id') or session.get('user_id')
@@ -242,7 +237,6 @@ def gestionar_mesas():
         usuario_actual=usuario_actual,
         caja_abierta=caja_abierta
     )
-
 @caja_mesas_bp.route('/admin/mesas/eliminar/<int:id_mesa>', methods=['POST'])
 def eliminar_mesa(id_mesa):
     rol_usuario = str(session.get('rol', '')).lower()
@@ -273,7 +267,6 @@ def eliminar_mesa(id_mesa):
         flash(f'Error al eliminar la mesa: {e}', 'danger')
         
     return redirect(url_for('caja_mesas.gestionar_mesas'))
-
 @caja_mesas_bp.route('/admin/mesas/json-general')
 def mesas_json_general():
     try:
@@ -309,7 +302,6 @@ def mesas_json_general():
         return jsonify(lista)
     except Exception as e:
         return jsonify([])
-
 def cargar_productos_gerencia(cursor, conex, empresa_id):
     productos = []
     try:
@@ -337,7 +329,6 @@ def cargar_productos_gerencia(cursor, conex, empresa_id):
     except Exception as e:
         conex.rollback()
     return productos
-
 @caja_mesas_bp.route('/admin/mesas/pedido/<int:id_mesa>', methods=['GET', 'POST'])
 def abrir_pedido(id_mesa):
     user_id = session.get('usuario_id') or session.get('user_id')
@@ -476,7 +467,6 @@ def abrir_pedido(id_mesa):
         rol_usuario=rol_usuario,
         caja_abierta=caja_abierta
     )
-
 @caja_mesas_bp.route('/admin/mesas/pedido/vaciar/<int:id_mesa>', methods=['POST'])
 def vaciar_mesa(id_mesa):
     user_id = session.get('usuario_id') or session.get('user_id')
@@ -500,7 +490,6 @@ def vaciar_mesa(id_mesa):
         flash(f'❌ Error al vaciar la mesa: {e}', 'danger')
         
     return redirect(url_for('caja_mesas.abrir_pedido', id_mesa=id_mesa))
-
 @caja_mesas_bp.route('/admin/productos/eliminar/<int:id_producto>', methods=['POST'])
 def eliminar_producto_catalogo(id_producto):
     rol_usuario = str(session.get('rol', '')).lower()
@@ -523,7 +512,6 @@ def eliminar_producto_catalogo(id_producto):
         flash(f'Error al eliminar el producto: {e}', 'danger')
         
     return redirect('/admin/productos')
-
 @caja_mesas_bp.route('/admin/mesas/json/<int:id_mesa>')
 def obtener_pedido_json(id_mesa):
     try:
@@ -557,7 +545,6 @@ def obtener_pedido_json(id_mesa):
         return jsonify({'pedidos': pedidos, 'total': total})
     except Exception as e:
         return jsonify({'pedidos': [], 'total': 0})
-
 @caja_mesas_bp.route('/admin/mesas/pedido/aumentar/<int:id_item>', methods=['POST'])
 def aumentar_cantidad(id_item):
     conex = get_db_connection()
@@ -579,7 +566,6 @@ def aumentar_cantidad(id_item):
     cursor.close()
     conex.close()
     return redirect(url_for('caja_mesas.abrir_pedido', id_mesa=id_mesa))
-
 @caja_mesas_bp.route('/admin/mesas/pedido/disminuir/<int:id_item>', methods=['POST'])
 def disminuir_cantidad(id_item):
     conex = get_db_connection()
@@ -607,7 +593,6 @@ def disminuir_cantidad(id_item):
     cursor.close()
     conex.close()
     return redirect(url_for('caja_mesas.abrir_pedido', id_mesa=id_mesa))
-
 @caja_mesas_bp.route('/admin/mesas/pedido/eliminar-item/<int:id_item>', methods=['POST'])
 def eliminar_item(id_item):
     conex = get_db_connection()
@@ -626,7 +611,6 @@ def eliminar_item(id_item):
     cursor.close()
     conex.close()
     return redirect(url_for('caja_mesas.abrir_pedido', id_mesa=id_mesa))
-
 @caja_mesas_bp.route('/admin/mesas/cambiar/<int:id_mesa_origen>', methods=['POST'])
 def cambiar_mesa(id_mesa_origen):
     id_mesa_destino = request.form.get('id_mesa_destino')
@@ -655,7 +639,6 @@ def cambiar_mesa(id_mesa_origen):
     cursor.close()
     conex.close()
     return redirect(url_for('caja_mesas.abrir_pedido', id_mesa=id_mesa_destino))
-
 @caja_mesas_bp.route('/admin/mesas/cerrar/<int:id_mesa>', methods=['POST'])
 def cerrar_facturar_mesa(id_mesa):
     rol_usuario = str(session.get('rol', '')).lower()
@@ -667,9 +650,9 @@ def cerrar_facturar_mesa(id_mesa):
     tipo_pago = request.form.get('tipo_pago', 'Efectivo')
     efectivo_recibido = float(request.form.get('efectivo_recibido', 0))
     
-    # NUEVO: Capturar propina opcional (si está vacía, pasa a 0.0)
-    propina_raw = request.form.get('propina', '').strip()
-    propina = float(propina_raw) if propina_raw != '' else 0.0
+    # Capturar porcentaje de propina opcional
+    propina_raw = request.form.get('propina_porcentaje', '').strip()
+    porcentaje_propina = float(propina_raw) if propina_raw != '' else 0.0
     
     desea_factura_impresa = request.form.get('desea_factura_impresa') == 'si'
     es_electronica = request.form.get('es_electronica') == 'si'
@@ -677,6 +660,7 @@ def cerrar_facturar_mesa(id_mesa):
     # Capturar datos fiscales del cliente desde el modal
     cliente_nombre = request.form.get('cliente_nombre', '').strip() or 'Consumidor Final'
     cliente_nit = request.form.get('cliente_nit', '').strip() or '222222222222'
+    cliente_correo = request.form.get('cliente_correo', '').strip()
     cliente_telefono = request.form.get('cliente_telefono', '').strip()
     
     conex = get_db_connection()
@@ -694,8 +678,9 @@ def cerrar_facturar_mesa(id_mesa):
         conex.close()
         return redirect(url_for('caja_mesas.gestionar_mesas'))
         
-    # NUEVO: El total de venta incluye subtotal de productos + propina
-    total_venta = subtotal_productos + propina
+    # Calcular propina basada en porcentaje
+    propina_valor = subtotal_productos * (porcentaje_propina / 100.0)
+    total_venta = subtotal_productos + propina_valor
     devueltas = max(0.0, efectivo_recibido - total_venta)
 
     cursor.execute("SELECT numero_mesa, mesero_atendiendo FROM mesas WHERE id = %s AND empresa_id = %s;", (id_mesa, empresa_id))
@@ -707,18 +692,18 @@ def cerrar_facturar_mesa(id_mesa):
     if not mesero_atendio or mesero_atendio.strip() == '' or mesero_atendio == 'Sin asignar':
         mesero_atendio = usuario_sesion
     
-    # NUEVO: Guardar en historial_ventas con propina y datos del cliente
+    # Guardar en historial_ventas incluyendo propina y correo
     cursor.execute("""
         INSERT INTO historial_ventas (
             empresa_id, id_mesa, numero_mesa, total_venta, tipo_pago, 
             efectivo_recibido, devueltas, atendido_por, fecha_venta, 
-            propina, cliente_nombre, cliente_nit, cliente_telefono
+            propina, cliente_nombre, cliente_nit, cliente_correo, cliente_telefono
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s, %s, %s, %s) RETURNING id;
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s, %s, %s, %s, %s) RETURNING id;
     """, (
         empresa_id, id_mesa, num_mesa_str, total_venta, tipo_pago, 
         efectivo_recibido, devueltas, mesero_atendio, 
-        propina, cliente_nombre, cliente_nit, cliente_telefono
+        propina_valor, cliente_nombre, cliente_nit, cliente_correo, cliente_telefono
     ))
     id_venta = cursor.fetchone()[0]
     
@@ -768,7 +753,6 @@ def cerrar_facturar_mesa(id_mesa):
         return redirect(url_for('caja_mesas.imprimir_ticket', id_venta=id_venta, link_wa=link_wa))
         
     return redirect(url_for('caja_mesas.imprimir_ticket', id_venta=id_venta))
-
 @caja_mesas_bp.route('/admin/caja/apertura', methods=['GET', 'POST'])
 def apertura_caja():
     user_id = session.get('usuario_id') or session.get('user_id')
@@ -897,7 +881,6 @@ def apertura_caja():
         rendimiento_personal=rendimiento_personal,
         rol_usuario=session.get('rol')
     )
-
 @caja_mesas_bp.route('/admin/sistema/reset-emergencia', methods=['POST'])
 def reset_emergencia():
     rol_usuario = str(session.get('rol', '')).lower()
@@ -934,7 +917,6 @@ def reset_emergencia():
     except Exception as e:
         flash(f'❌ Error: {e}', 'danger')
     return redirect(url_for('caja_mesas.apertura_caja'))
-
 @caja_mesas_bp.route('/admin/imprimir-ticket/<int:id_venta>')
 def imprimir_ticket(id_venta):
     link_wa = request.args.get('link_wa')
@@ -945,10 +927,9 @@ def imprimir_ticket(id_venta):
     asegurar_tablas_globales(cursor, conex)
     empresa_id = obtener_empresa_id_seguro(cursor)
     
-    # NUEVO: Traer propina y datos fiscales del cliente guardados
     cursor.execute("""
         SELECT id, numero_mesa, total_venta, tipo_pago, efectivo_recibido, devueltas, atendido_por, fecha_venta, id_mesa,
-               COALESCE(propina, 0), COALESCE(cliente_nombre, 'Consumidor Final'), COALESCE(cliente_nit, '222222222222'), cliente_telefono
+               COALESCE(propina, 0), COALESCE(cliente_nombre, 'Consumidor Final'), COALESCE(cliente_nit, '222222222222'), cliente_telefono, cliente_correo
         FROM historial_ventas WHERE id = %s AND empresa_id = %s;
     """, (id_venta, empresa_id))
     v = cursor.fetchone()
@@ -969,7 +950,8 @@ def imprimir_ticket(id_venta):
         'propina': float(v[9]),
         'cliente_nombre': v[10],
         'cliente_nit': v[11],
-        'cliente_telefono': v[12]
+        'cliente_telefono': v[12],
+        'cliente_correo': v[13]
     }
     
     cursor.execute("""
@@ -1019,7 +1001,6 @@ def imprimir_ticket(id_venta):
         link_wa=link_wa,
         factura_electronica=factura_electronica
     )
-
 @caja_mesas_bp.route('/admin/verificar-factura/<int:id_venta>')
 def verificar_factura_qr(id_venta):
     conex = get_db_connection()
@@ -1027,7 +1008,8 @@ def verificar_factura_qr(id_venta):
     asegurar_tablas_globales(cursor, conex)
     
     cursor.execute("""
-        SELECT id, numero_mesa, total_venta, tipo_pago, efectivo_recibido, devueltas, atendido_por, fecha_venta, empresa_id
+        SELECT id, numero_mesa, total_venta, tipo_pago, efectivo_recibido, devueltas, atendido_por, fecha_venta, 
+               COALESCE(propina, 0), COALESCE(cliente_nombre, 'Consumidor Final'), COALESCE(cliente_nit, '222222222222'), cliente_telefono, cliente_correo, id_mesa
         FROM historial_ventas WHERE id = %s;
     """, (id_venta,))
     v = cursor.fetchone()
@@ -1044,7 +1026,12 @@ def verificar_factura_qr(id_venta):
         'efectivo_recibido': float(v[4]),
         'devueltas': float(v[5]),
         'atendido_por': v[6],
-        'fecha_venta': v[7]
+        'fecha_venta': v[7],
+        'propina': float(v[8]),
+        'cliente_nombre': v[9],
+        'cliente_nit': v[10],
+        'cliente_telefono': v[11],
+        'cliente_correo': v[12]
     }
     
     cursor.execute("""
@@ -1053,7 +1040,22 @@ def verificar_factura_qr(id_venta):
         WHERE id_venta_asociada = %s;
     """, (id_venta,))
     items_raw = cursor.fetchall()
-    items = [{'producto': i[0], 'cantidad': i[1], 'precio': float(i[2]), 'subtotal': float(i[3])} for i in items_raw]
+    if not items_raw and v[13]:
+        cursor.execute("""
+            SELECT producto, cantidad, precio, (precio * cantidad) as subtotal
+            FROM pedidos_mesa 
+            WHERE id_mesa = %s AND estado = 'Facturado';
+        """, (v[13],))
+        items_raw = cursor.fetchall()
+        
+    items = []
+    subtotal_calculado = 0
+    for i in items_raw:
+        sub = float(i[3])
+        subtotal_calculado += sub
+        items.append({'producto': i[0], 'cantidad': i[1], 'precio': float(i[2]), 'subtotal': sub})
+        
+    venta['subtotal_productos'] = subtotal_calculado if subtotal_calculado > 0 else (venta['total_venta'] - venta['propina'])
     
     cursor.close()
     conex.close()
