@@ -33,11 +33,16 @@
         }
         .table-custom th {
             border-color: #334155;
-            color: #94a3b8;
+            color: #38bdf8; /* Azul claro nítido para los encabezados de tabla */
         }
         .table-custom td {
             border-color: #334155;
             color: #f8fafc;
+        }
+        /* Forzar texto claro altamente visible */
+        .text-label-custom {
+            color: #cbd5e1 !important; /* Gris muy claro / blanco suave */
+            font-weight: 500;
         }
     </style>
 </head>
@@ -55,23 +60,23 @@
         <!-- Datos Generales de la Venta -->
         <div class="info-box mb-3 small">
             <div class="d-flex justify-content-between mb-2">
-                <span class="text-muted">Factura N°:</span>
+                <span class="text-label-custom">Factura N°:</span>
                 <span class="fw-bold text-info">#{{ venta.id }}</span>
             </div>
             <div class="d-flex justify-content-between mb-2">
-                <span class="text-muted">Fecha y Hora:</span>
+                <span class="text-label-custom">Fecha y Hora:</span>
                 <span class="text-white">{{ venta.fecha_venta }}</span>
             </div>
             <div class="d-flex justify-content-between mb-2">
-                <span class="text-muted">Mesa / Atención:</span>
-                <span class="text-white text-uppercase font-weight-bold">Mesa {{ venta.numero_mesa }}</span>
+                <span class="text-label-custom">Mesa / Atención:</span>
+                <span class="text-white text-uppercase fw-bold">Mesa {{ venta.numero_mesa }}</span>
             </div>
             <div class="d-flex justify-content-between mb-2">
-                <span class="text-muted">Atendido por:</span>
+                <span class="text-label-custom">Atendido por:</span>
                 <span class="text-white">{{ venta.atendido_por }}</span>
             </div>
             <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top border-secondary">
-                <span class="text-muted">Forma de Pago:</span>
+                <span class="text-label-custom">Forma de Pago:</span>
                 <span class="badge bg-primary text-uppercase">{{ venta.tipo_pago }}</span>
             </div>
         </div>
@@ -90,9 +95,9 @@
                 <tbody>
                     {% for item in items %}
                     <tr>
-                        <td>{{ item.producto }}</td>
-                        <td class="text-center">{{ item.cantidad }}</td>
-                        <td class="text-end text-warning">${{ "{:,.2f}".format(item.subtotal) }}</td>
+                        <td class="text-white">{{ item.producto }}</td>
+                        <td class="text-center text-white">{{ item.cantidad }}</td>
+                        <td class="text-end text-warning fw-bold">${{ "{:,.2f}".format(item.subtotal) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -105,18 +110,18 @@
                 <span class="fw-bold text-white fs-5">TOTAL PAGADO:</span>
                 <span class="fw-bold text-success fs-4">${{ "{:,.2f}".format(venta.total_venta) }}</span>
             </div>
-            <div class="d-flex justify-content-between small text-muted border-top border-secondary pt-2 mt-2">
-                <span>Efectivo Recibido:</span>
-                <span class="text-white">${{ "{:,.2f}".format(venta.efectivo_recibido) }}</span>
+            <div class="d-flex justify-content-between small border-top border-secondary pt-2 mt-2">
+                <span class="text-label-custom">Efectivo Recibido:</span>
+                <span class="text-white fw-bold">${{ "{:,.2f}".format(venta.efectivo_recibido) }}</span>
             </div>
-            <div class="d-flex justify-content-between small text-muted">
-                <span>Cambio / Vueltos:</span>
-                <span class="text-white">${{ "{:,.2f}".format(venta.devueltas) }}</span>
+            <div class="d-flex justify-content-between small">
+                <span class="text-label-custom">Cambio / Vueltos:</span>
+                <span class="text-white fw-bold">${{ "{:,.2f}".format(venta.devueltas) }}</span>
             </div>
         </div>
 
         <!-- Pie de página -->
-        <div class="text-center text-muted small mb-4">
+        <div class="text-center text-light small mb-4" style="opacity: 0.85;">
             <p class="mb-1">Este documento es un comprobante de venta digital generado de forma automática por IGOR POS.</p>
             <p class="text-info fw-bold">¡Gracias por su compra y preferencia! 🤝</p>
         </div>
