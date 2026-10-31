@@ -244,7 +244,8 @@
           <div class="text-center mb-4 p-3 bg-light rounded-3 border">
             <span class="text-muted d-block small fw-bold text-uppercase">Total a Pagar</span>
             <h2 class="text-success fw-bold m-0" id="montoTotalPagarDisplay">${{ "{:,.2f}".format(total) }}</h2>
-            <input type="hidden" id="inputTotalVenta" value="{{ total }}">
+            <input type="hidden" id="inputTotalVenta" name="total_venta" value="{{ total }}">
+            <input type="hidden" id="inputSubtotalOriginal" value="{{ total }}">
           </div>
           
           <div class="mb-3">
@@ -268,14 +269,14 @@
             </div>
           </div>
 
-          <!-- 🟢 NUEVO: Input de Propina Personalizada (Opcional) -->
+          <!-- 🟢 PROPINA POR PORCENTAJE (OPCIONAL) -->
           <div class="mb-3">
-            <label for="propina" class="form-label fw-semibold">Propina (Opcional)</label>
+            <label for="propina_porcentaje" class="form-label fw-semibold">Propina por Porcentaje (Opcional)</label>
             <div class="input-group">
-              <span class="input-group-text">$</span>
-              <input type="number" step="100" class="form-control" id="propina" name="propina" placeholder="0" min="0">
+              <input type="number" step="1" min="0" max="100" class="form-control form-control-lg" id="propina_porcentaje" name="propina_porcentaje" value="0" placeholder="Ej: 10" oninput="calcularTotalConPropina()">
+              <span class="input-group-text">%</span>
             </div>
-            <small class="text-muted">Si no desea cobrar propina, déjelo en blanco o en 0.</small>
+            <small class="text-muted" id="detallesPropinaText">Si no desea cobrar propina, déjelo en blanco o en 0%.</small>
           </div>
           
           <div class="p-3 bg-light rounded-3 border mb-3">
@@ -292,13 +293,14 @@
               </label>
             </div>
           </div>
+          
           <div id="seccionDatosCliente" style="display: block;" class="p-3 bg-light rounded-3 border mb-3">
-            <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-person-lines-fill"></i> Datos Fiscales del Cliente</h6>
+            <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-person-lines-fill"></i> Datos Fiscales del Cliente <span class="text-danger">*</span></h6>
             <div class="mb-2">
-              <input type="text" name="cliente_nombre" class="form-control" placeholder="Nombre o Razón Social">
+              <input type="text" name="cliente_nombre" class="form-control" placeholder="Nombre o Razón Social (Requerido para factura/WA)" required>
             </div>
             <div class="mb-2">
-              <input type="text" name="cliente_nit" class="form-control" placeholder="NIT / Cédula de Ciudadanía">
+              <input type="text" name="cliente_nit" class="form-control" placeholder="NIT / Cédula de Ciudadanía (Requerido para factura/WA)" required>
             </div>
             <div class="mb-2">
               <input type="email" name="cliente_correo" class="form-control" placeholder="Correo Electrónico (Opcional)">
@@ -333,6 +335,39 @@ function filtrarProductos() {
     }
   });
 }
+
+function calcularTotalConPropina() {
+  const subtotalOriginal = parseFloat(document.getElementById('inputSubtotalOriginal').value) || 0;
+  const porcentajePropina = parseFloat(document.getElementById('propina_porcentaje').value) || 0;
+  
+  const valorPropina = subtotalOriginal * (porcentajePropina / 100);
+  const totalConPropina = subtotalOriginal + valorPropina;
+  
+  const formatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 2 });
+  
+  document.getElementById('montoTotalPagarDisplay').innerText = formatter.format(totalConPropina);
+  document.getElementById('inputTotalVenta').value = totalConPropina;
+  
+  const detalleTxt = document.getElementById('detallesPropinaText');
+  if (detalleTxt) {
+    if (porcentajePropina > 0) {
+      detalleTxt.innerText = `Propina (${porcentajePropina}%): +${formatter.format(valorPropina)}`;
+      detalleTxt.className = "text-success fw-bold small";
+    } else {
+      detalleTxt.innerText = "Si no desea cobrar propina, déjelo en blanco o en 0%.";
+      detalleTxt.className = "text-muted small";
+    }
+  }
+  
+  // Actualizar también el efectivo recibido por defecto si coincide con el total anterior o actualizar vueltos
+  const inputRecibido = document.getElementById('inputEfectivoRecibido');
+  if (inputRecibido && (!inputRecibido.dataset.editadoPorUsuario || inputRecibido.value == subtotalOriginal)) {
+    inputRecibido.value = totalConPropina;
+  }
+  
+  calcularVueltos();
+}
+
 function calcularVueltos() {
   const total = parseFloat(document.getElementById('inputTotalVenta').value) || 0;
   const recibido = parseFloat(document.getElementById('inputEfectivoRecibido').value) || 0;
@@ -344,19 +379,32 @@ function calcularVueltos() {
     minimumFractionDigits: 2
   }).format(vueltos);
 }
+
+// Marcar si el usuario edita manualmente el efectivo
+document.getElementById('inputEfectivoRecibido')?.addEventListener('input', function() {
+  this.dataset.editadoPorUsuario = "true";
+});
+
 function toggleDatosCliente() {
   const checkImpresora = document.getElementById('checkFacturaImpresa');
   const checkWA = document.getElementById('checkFacturaWA');
   const seccion = document.getElementById('seccionDatosCliente');
+  const inputNombre = document.querySelector('input[name="cliente_nombre"]');
+  const inputNit = document.querySelector('input[name="cliente_nit"]');
   
   if (checkImpresora && checkWA && seccion) {
     if (checkImpresora.checked || checkWA.checked) {
       seccion.style.display = 'block';
+      if (inputNombre) inputNombre.required = true;
+      if (inputNit) inputNit.required = true;
     } else {
       seccion.style.display = 'none';
+      if (inputNombre) inputNombre.required = false;
+      if (inputNit) inputNit.required = false;
     }
   }
 }
+
 // 🚀 NÚCLEO INSTANTÁNEO AJAX (FETCH API):
 async function recargarConsumoMesaAJAX() {
   try {
@@ -415,12 +463,13 @@ async function recargarConsumoMesaAJAX() {
     const displayTotal = document.getElementById('displayTotalVenta');
     const montoModal = document.getElementById('montoTotalPagarDisplay');
     const inputTotal = document.getElementById('inputTotalVenta');
-    const inputRecibido = document.getElementById('inputEfectivoRecibido');
+    const inputSubtotal = document.getElementById('inputSubtotalOriginal');
     
     if (displayTotal) displayTotal.innerText = totalFormatted;
-    if (montoModal) montoModal.innerText = totalFormatted;
-    if (inputTotal) inputTotal.value = data.total;
-    if (inputRecibido) inputRecibido.value = data.total;
+    if (inputSubtotal) inputSubtotal.value = data.total;
+    
+    // Recalcular con el porcentaje de propina actual
+    calcularTotalConPropina();
     
     const hayItemsActuales = data.pedidos && data.pedidos.length > 0;
     const botonComandarActual = document.querySelector('button[name="enviar_comanda"]');
@@ -429,12 +478,12 @@ async function recargarConsumoMesaAJAX() {
       return;
     }
     
-    calcularVueltos();
     vincularFormulariosAJAX();
   } catch (err) {
     console.error("Error al actualizar consumo AJAX:", err);
   }
 }
+
 function vincularFormulariosAJAX() {
   document.querySelectorAll('.form-ajax-accion').forEach(form => {
     if (form.dataset.ajaxVinculado) return;
@@ -467,8 +516,9 @@ function vincularFormulariosAJAX() {
     });
   });
 }
+
 document.addEventListener('DOMContentLoaded', function() {
-  calcularVueltos();
+  calcularTotalConPropina();
   toggleDatosCliente();
   vincularFormulariosAJAX();
   // 🔄 AUTO-REFRESCO INTELIGENTE EN SEGUNDO PLANO (CADA 4 SEGUNDOS)
