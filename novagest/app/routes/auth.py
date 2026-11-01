@@ -58,8 +58,7 @@ def asegurar_tabla():
 # Se ejecuta al iniciar el módulo
 asegurar_tabla()
 
-
-# 🛡️ BLOQUEO GLOBAL EN TIEMPO REAL (DÍA 8 EN ADELANTE)
+# 🛡️ BLOQUEO GLOBAL EN TIEMPO REAL (DÍA 8 EN ADELANTE - EXCLUSIVO PARA GERENTES)
 @auth_bp.before_app_request
 def verificar_estado_suscripcion_global():
     ruta = request.path
@@ -74,6 +73,10 @@ def verificar_estado_suscripcion_global():
         
     empresa_id = session.get('empresa_id') or user_id
     rol = str(session.get('rol', '')).lower()
+    
+    # 🟢 REGLA: Si no es gerente/administrador, permitimos operar sin restricciones de cobro de suscripción
+    if rol not in ['gerente', 'administrador', 'admin']:
+        return None
     
     try:
         conex = get_db_connection()
@@ -105,20 +108,14 @@ def verificar_estado_suscripcion_global():
                     conex.commit()
                 conex.close()
                 
-            # ACCIÓN DE BLOQUEO SI ESTÁ VENCIDO
+            # ACCIÓN DE BLOQUEO AL GERENTE SI ESTÁ VENCIDO
             if g_status in ['EXPIRED', 'CANCELLED']:
-                if rol in ['gerente', 'administrador', 'admin']:
-                    flash("⚠️ Tu período de prueba de 7 días ha finalizado. Realiza el pago para desbloquear el sistema.", "warning")
-                    return redirect(url_for('wompi.planes_pago'))
-                else:
-                    session.clear()
-                    flash("🚫 La suscripción de la empresa está vencida. Comunícate con el Gerente para renovar el servicio.", "danger")
-                    return redirect(url_for('auth.login'))
+                flash("⚠️ Tu período de prueba de 7 días ha finalizado. Realiza el pago para desbloquear el sistema.", "warning")
+                return redirect(url_for('wompi.planes_pago'))
     except Exception as e:
         print(f"Error en validación global de suscripción: {e}")
         
     return None
-
 
 @auth_bp.route('/registro', methods=['GET', 'POST'])
 def registro():
@@ -168,7 +165,6 @@ def registro():
             
     return render_template('registro.html')
 
-
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -189,7 +185,7 @@ def login():
                 flash("El usuario o contraseña es incorrecto.", 'danger')
             else:
                 user_id = user[0]
-                rol = user[3]
+                rol = str(user[3]).lower()
                 empresa_id = user[5] or user[0]
                 
                 # Buscamos al GERENTE para revisar el estado real de la empresa
@@ -221,8 +217,9 @@ def login():
                             conex.commit()
                         conex.close()
                         
+                    # Si el plan está vencido y el que intenta entrar es el gerente, va a planes de pago
                     if g_status in ['EXPIRED', 'CANCELLED']:
-                        if rol == 'gerente':
+                        if rol in ['gerente', 'administrador', 'admin']:
                             flash("⚠️ Tu período de prueba o suscripción ha vencido. Por favor realiza el pago para continuar.", "warning")
                             session['user_id'] = user_id
                             session['usuario_id'] = user_id
@@ -249,12 +246,10 @@ def login():
             
     return render_template('login.html')
 
-
 @auth_bp.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('auth.login'))
-
 
 # --- RECUPERACIÓN DE CONTRASEÑA ---
 @auth_bp.route('/recuperar-password', methods=['GET', 'POST'])
@@ -300,7 +295,6 @@ def solicitar_recuperacion():
             return redirect(url_for('auth.solicitar_recuperacion'))
             
     return render_template('recuperar_solicitud.html')
-
 
 @auth_bp.route('/restablecer-password/<token>', methods=['GET', 'POST'])
 def restablecer_password(token):
