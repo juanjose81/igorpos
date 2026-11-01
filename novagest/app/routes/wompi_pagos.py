@@ -7,36 +7,53 @@ wompi_bp = Blueprint('wompi', __name__)
 # 1. Pantalla donde el Gerente ve los planes y el botón de pago de Wompi
 @wompi_bp.route('/planes', methods=['GET'])
 def planes_pago():
-    # Verificamos que esté logueado
-    if 'user_id' not in session:
+    # Capturamos si viene un plan seleccionado por URL
+    tipo_seleccionado = request.args.get('tipo')
+    if tipo_seleccionado:
+        session['pending_plan'] = tipo_seleccionado
+
+    # Si no está logueado, lo mandamos a iniciar sesión o registrarse
+    if 'user_id' not in session and 'usuario_id' not in session:
         return redirect(url_for('auth.login'))
+    
+    # Validamos si el usuario logueado es GERENTE / Administrador
+    rol = str(session.get('rol', '')).lower()
+    if rol not in ['gerente', 'administrador', 'admin']:
+        return redirect(url_for('admin.dashboard'))
     
     return render_template('planes_pago.html')
 
-# 2. Webhook de Wompi: Recibe el pago aprobado y activa el sistema automáticamente
+# 2. Ruta puente para interceptar el clic en los planes antes de ir a Wompi
+@wompi_bp.route('/seleccionar-plan/<tipo>', methods=['GET'])
+def seleccionar_plan(tipo):
+    session['pending_plan'] = tipo
+    
+    # Si no ha iniciado sesión, lo mandamos al login para que se autentique como gerente
+    if 'user_id' not in session and 'usuario_id' not in session:
+        return redirect(url_for('auth.login'))
+        
+    # Si ya tiene sesión activa y es gerente, lo mandamos directo al link de Wompi correspondiente
+    link_wompi = "https://checkout.wompi.co/l/dYxdWp" if tipo == 'yearly' else "https://checkout.wompi.co/l/5tp88O"
+    return redirect(link_wompi)
+
+# 3. Webhook de Wompi: Recibe el pago aprobado y activa el sistema automáticamente[cite: 5]
 @wompi_bp.route('/api/wompi-webhook', methods=['POST'])
 def wompi_webhook():
     try:
         data = request.json
         print("DEBUG WEBHOOK WOMPI RECIBIDO:", data)
         
-        # Verificamos la estructura del evento de Wompi para transacciones aprobadas
         if data and data.get('event') == 'transaction.updated':
             transaccion = data.get('data', {}).get('transaction', {})
             estado = transaccion.get('status')
             
             if estado == 'APPROVED':
-                # La referencia que enviamos al cobrar debe ser el id de la empresa (empresa_id) o usuario
                 referencia = transaccion.get('reference') 
-                
-                # Extraemos el tipo de plan (por defecto 'monthly')
                 tipo_plan = transaccion.get('custom_data', {}).get('plan_type', 'monthly')
                 dias_a_sumar = 365 if tipo_plan == 'yearly' else 30
                 
-                # Calculamos la fecha de expiración en Python de forma segura
                 fecha_fin = datetime.now() + timedelta(days=dias_a_sumar)
                 
-                # Actualizamos en la base de datos
                 conex = get_db_connection()
                 with conex.cursor() as cursor:
                     cursor.execute("""

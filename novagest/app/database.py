@@ -1,6 +1,5 @@
 import os
 import psycopg
-
 def get_db_connection():
     # Intenta leer la variable de entorno DATABASE_URL que configuramos en Render
     database_url = os.environ.get('DATABASE_URL')

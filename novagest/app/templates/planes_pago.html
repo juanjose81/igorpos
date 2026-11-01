@@ -48,13 +48,12 @@
 <body>
     <div class="container py-5">
         
-        <!-- BOTÓN DE RETORNO RÁPIDO (Si ya está activo o en periodo de prueba) -->
+        <!-- BOTÓN DE RETORNO RÁPIDO -->
         <div class="d-flex justify-content-start mb-3">
             <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm fw-bold">
                 <i class="fa-solid fa-arrow-left me-1"></i> Volver al Panel / Sistema
             </a>
         </div>
-
         <!-- ENCABEZADO -->
         <div class="pricing-header text-center pb-4">
             <h1 class="fw-bold text-dark display-5 mb-3">IGOR POS 🚀</h1>
@@ -62,7 +61,6 @@
                 Tu período de prueba ha finalizado o tu suscripción necesita ser renovada. Elige el plan que mejor se adapte a tu restaurante para continuar utilizando la plataforma sin interrupciones.
             </p>
         </div>
-
         <!-- ALERTAS Y MENSAJES DEL SISTEMA -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -78,7 +76,6 @@
                 </div>
             {% endif %}
         {% endwith %}
-
         <!-- TARJETAS DE PLANES -->
         <div class="row row-cols-1 row-cols-md-2 justify-content-center g-4 my-2">
             
@@ -101,13 +98,12 @@
                             <li class="mb-3">✅ Soporte técnico prioritario incluido</li>
                         </ul>
                         <!-- LINK WOMPI MENSUAL -->
-                        <a href="https://checkout.wompi.co/l/5tp88O" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-lg btn-pago mt-auto fw-bold w-100">
+                        <a href="{{ url_for('wompi.seleccionar_plan', tipo='monthly') }}" class="btn btn-outline-primary btn-lg btn-pago mt-auto fw-bold w-100">
                             Pagar Plan Mensual ($70.000)
                         </a>
                     </div>
                 </div>
             </div>
-
             <!-- PLAN ANUAL -->
             <div class="col col-lg-5">
                 <div class="card card-pricing card-destacado h-100 p-4 text-center bg-white position-relative">
@@ -130,14 +126,13 @@
                             <li class="mb-3">✅ Garantía y estabilidad operacional para tu local</li>
                         </ul>
                         <!-- LINK WOMPI ANUAL -->
-                        <a href="https://checkout.wompi.co/l/dYxdWp" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-lg btn-pago mt-auto fw-bold w-100 shadow">
+                        <a href="{{ url_for('wompi.seleccionar_plan', tipo='yearly') }}" class="btn btn-primary btn-lg btn-pago mt-auto fw-bold w-100 shadow">
                             Pagar Plan Anual ($660.000)
                         </a>
                     </div>
                 </div>
             </div>
         </div>
-
         <!-- PIE DE PÁGINA / CERRAR SESIÓN -->
         <div class="text-center mt-5">
             <p class="text-muted mb-2 small">¿Deseas ingresar con otra cuenta de usuario?</p>
@@ -146,7 +141,6 @@
             </a>
         </div>
     </div>
-
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

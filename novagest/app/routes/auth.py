@@ -64,7 +64,7 @@ def verificar_estado_suscripcion_global():
     ruta = request.path
     # Rutas libres donde no se aplica el bloqueo para permitir iniciar sesión o pagar
     rutas_libres = ['/login', '/registro', '/logout', '/recuperar-password', '/static']
-    if any(ruta.startswith(r) for r in rutas_libres) or '/wompi/' in ruta or '/planes' in ruta:
+    if any(ruta.startswith(r) for r in rutas_libres) or '/wompi/' in ruta or '/planes' in ruta or '/seleccionar-plan' in ruta:
         return None
         
     user_id = session.get('user_id') or session.get('usuario_id')
@@ -157,8 +157,24 @@ def registro():
                 )
                 conex.commit()
             conex.close()
-            flash('¡Restaurante registrado con éxito! Tienes 7 días de prueba gratis. Ya puedes iniciar sesión.', 'success')
-            return redirect(url_for('auth.login'))
+            
+            # Autenticamos al usuario de una vez en la sesión para evitar pasos extra
+            session['user_id'] = nuevo_id
+            session['usuario_id'] = nuevo_id
+            session['email'] = email
+            session['rol'] = rol
+            session['nombre'] = nombre_restaurante
+            session['empresa_id'] = nuevo_id
+
+            flash('¡Restaurante registrado con éxito! Tienes 7 días de prueba gratis.', 'success')
+            
+            # Si traía un plan seleccionado desde antes de registrarse, lo llevamos a pagar de una vez
+            pending_plan = session.pop('pending_plan', None)
+            if pending_plan:
+                link_wompi = "https://checkout.wompi.co/l/dYxdWp" if pending_plan == 'yearly' else "https://checkout.wompi.co/l/5tp88O"
+                return redirect(link_wompi)
+
+            return redirect(url_for('admin.dashboard'))
         except Exception as e:
             flash(f'Error al registrar: {e}', 'danger')
             return render_template('registro.html')
@@ -217,7 +233,6 @@ def login():
                             conex.commit()
                         conex.close()
                         
-                    # Si el plan está vencido y el que intenta entrar es el gerente, va a planes de pago
                     if g_status in ['EXPIRED', 'CANCELLED']:
                         if rol in ['gerente', 'administrador', 'admin']:
                             flash("⚠️ Tu período de prueba o suscripción ha vencido. Por favor realiza el pago para continuar.", "warning")
@@ -227,6 +242,13 @@ def login():
                             session['rol'] = rol
                             session['nombre'] = user[4]
                             session['empresa_id'] = empresa_id
+                            
+                            # Si tenía un plan pendiente, lo mandamos a pagar
+                            pending_plan = session.pop('pending_plan', None)
+                            if pending_plan:
+                                link_wompi = "https://checkout.wompi.co/l/dYxdWp" if pending_plan == 'yearly' else "https://checkout.wompi.co/l/5tp88O"
+                                return redirect(link_wompi)
+
                             return redirect(url_for('wompi.planes_pago'))
                         else:
                             flash("🚫 La suscripción de la empresa está vencida. Comunícate con el Gerente para renovar el servicio.", "danger")
@@ -238,6 +260,12 @@ def login():
                 session['rol'] = rol
                 session['nombre'] = user[4]
                 session['empresa_id'] = empresa_id
+                
+                # Si el gerente tenía un plan pendiente al momento de iniciar sesión, lo dirigimos directo al pago
+                pending_plan = session.pop('pending_plan', None)
+                if pending_plan and rol in ['gerente', 'administrador', 'admin']:
+                    link_wompi = "https://checkout.wompi.co/l/dYxdWp" if pending_plan == 'yearly' else "https://checkout.wompi.co/l/5tp88O"
+                    return redirect(link_wompi)
                 
                 return redirect(url_for('admin.dashboard'))
                 
