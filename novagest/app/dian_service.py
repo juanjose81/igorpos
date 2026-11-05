@@ -60,3 +60,52 @@ def enviar_factura_dian_api(factura_data, api_key=None, es_demo=True):
         "numero_factura": None,
         "mensaje": "No se pudo transmitir en tiempo real, guardada de forma local."
     }
+
+
+def enviar_set_pruebas_dian(documento_xml_str, consecutivo):
+    """
+    Envía un documento de prueba (Factura, Nota Crédito o Nota Débito) 
+    al Web Service de habilitación de la DIAN usando peticiones SOAP directas.
+    """
+    url_dian = "https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc?wsdl"
+    test_set_id = "e2466a37-2348-4cae-9617-c7a9190b2a5f"
+    
+    headers = {
+        "Content-Type": "text/xml; charset=utf-8",
+        "SOAPAction": "http://wcf.dian.colombia/IWcfDianCustomerServices/SendTestSetAsync"
+    }
+    
+    soap_envelope = f"""<?xml version="1.0" encoding="utf-8"?>
+    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wcf="http://wcf.dian.colombia">
+       <soapenv:Header/>
+       <soapenv:Body>
+          <wcf:SendTestSetAsync>
+             <wcf:fileName>FE-{consecutivo}.xml</wcf:fileName>
+             <wcf:fileZip>{documento_xml_str}</wcf:fileZip>
+             <wcf:testSetId>{test_set_id}</wcf:testSetId>
+          </wcf:SendTestSetAsync>
+       </soapenv:Body>
+    </soapenv:Envelope>
+    """
+    
+    try:
+        response = requests.post(url_dian, data=soap_envelope.encode('utf-8'), headers=headers, timeout=30)
+        if response.status_code == 200:
+            return {
+                "exito": True,
+                "consecutivo": consecutivo,
+                "mensaje": "Documento de prueba transmitido exitosamente a la DIAN"
+            }
+        else:
+            return {
+                "exito": False,
+                "consecutivo": consecutivo,
+                "mensaje": f"Error HTTP de la DIAN: {response.status_code}"
+            }
+    except Exception as e:
+        print(f"Excepción en conexión SOAP con la DIAN: {e}")
+        return {
+            "exito": False,
+            "consecutivo": consecutivo,
+            "mensaje": f"Falla de conexión: {str(e)}"
+        }
