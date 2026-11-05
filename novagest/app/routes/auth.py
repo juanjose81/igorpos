@@ -62,8 +62,8 @@ asegurar_tabla()
 @auth_bp.before_app_request
 def verificar_estado_suscripcion_global():
     ruta = request.path
-    # Rutas libres donde no se aplica el bloqueo para permitir iniciar sesión o pagar
-    rutas_libres = ['/login', '/registro', '/logout', '/recuperar-password', '/static']
+    # Rutas libres donde no se aplica el bloqueo para permitir iniciar sesión, registrarse, ver términos o pagar
+    rutas_libres = ['/login', '/registro', '/logout', '/recuperar-password', '/terminos', '/static']
     if any(ruta.startswith(r) for r in rutas_libres) or '/wompi/' in ruta or '/planes' in ruta or '/seleccionar-plan' in ruta:
         return None
         
@@ -165,7 +165,6 @@ def registro():
             session['rol'] = rol
             session['nombre'] = nombre_restaurante
             session['empresa_id'] = nuevo_id
-
             flash('¡Restaurante registrado con éxito! Tienes 7 días de prueba gratis.', 'success')
             
             # Si traía un plan seleccionado desde antes de registrarse, lo llevamos a pagar de una vez
@@ -173,7 +172,6 @@ def registro():
             if pending_plan:
                 link_wompi = "https://checkout.wompi.co/l/dYxdWp" if pending_plan == 'yearly' else "https://checkout.wompi.co/l/5tp88O"
                 return redirect(link_wompi)
-
             return redirect(url_for('admin.dashboard'))
         except Exception as e:
             flash(f'Error al registrar: {e}', 'danger')
@@ -248,7 +246,6 @@ def login():
                             if pending_plan:
                                 link_wompi = "https://checkout.wompi.co/l/dYxdWp" if pending_plan == 'yearly' else "https://checkout.wompi.co/l/5tp88O"
                                 return redirect(link_wompi)
-
                             return redirect(url_for('wompi.planes_pago'))
                         else:
                             flash("🚫 La suscripción de la empresa está vencida. Comunícate con el Gerente para renovar el servicio.", "danger")

@@ -22,7 +22,6 @@
         .alert-danger { background-color: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); }
         .alert-success { background-color: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.4); }
         .alert-warning { background-color: rgba(234, 179, 8, 0.2); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.4); }
-
         .free-badge { background: rgba(56, 189, 248, 0.1); color: #38bdf8; padding: 6px 12px; border-radius: 20px; text-align: center; font-size: 0.8rem; font-weight: bold; margin-bottom: 20px; border: 1px solid rgba(56, 189, 248, 0.3); }
         .login-link { text-align: center; margin-top: 20px; font-size: 0.85rem; color: #94a3b8; }
         .login-link a { color: #38bdf8; text-decoration: none; }
@@ -33,7 +32,6 @@
         <h2>IGOR POS</h2>
         <div class="free-badge">🎁 7 DÍAS DE PRUEBA TOTALMENTE GRATIS</div>
         <p>Crea tu cuenta de Gerente y empieza a controlar tu negocio</p>
-
         <!-- BLOQUE DE MENSAJES FLASH -->
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
@@ -44,7 +42,6 @@
             {% endfor %}
           {% endif %}
         {% endwith %}
-
         <form action="/registro" method="POST">
             <div class="form-group">
                 <label>Nombre del Restaurante / Negocio</label>
@@ -62,6 +59,15 @@
                 <label>Contraseña</label>
                 <input type="password" name="password" required placeholder="••••••••">
             </div>
+            
+            <!-- Casilla de Términos y Condiciones -->
+            <div class="form-group" style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 15px;">
+                <input type="checkbox" id="terminos" name="terminos" required style="width: 18px; height: 18px; margin-top: 2px; accent-color: #0284c7;">
+                <label for="terminos" style="font-size: 0.8rem; color: #cbd5e1; line-height: 1.3; margin-bottom: 0;">
+                    Acepto los <a href="/terminos" target="_blank" style="color: #38bdf8; text-decoration: underline;">Términos y Condiciones</a> y la exención fiscal.
+                </label>
+            </div>
+
             <button type="submit" class="btn-submit">Comenzar Prueba Gratis 🚀</button>
         </form>
         <div class="login-link">
