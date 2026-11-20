@@ -1,137 +1,129 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Administración de Usuarios y Conectados - IGOR POS</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #0b132b; color: white; padding: 20px; }
-        .grid-container { display: flex; gap: 20px; flex-wrap: wrap; }
-        .card { background-color: #1c2541; padding: 20px; border-radius: 10px; flex: 1; min-width: 320px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-        input, select { width: 100%; padding: 10px; margin: 5px 0 15px 0; border-radius: 5px; border: 1px solid #48cae4; background: #0b132b; color: white; box-sizing: border-box; }
-        button { background-color: #00b4d8; color: white; border: none; padding: 10px; border-radius: 5px; font-weight: bold; width: 100%; cursor: pointer; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px; border-bottom: 1px solid #3a506b; text-align: left; }
-        th { color: #4ea8de; }
-        .badge-online { background-color: #2a9d8f; color: white; padding: 4px 8px; border-radius: 10px; font-size: 0.85em; font-weight: bold; }
-        .badge-offline { background-color: #e63946; color: white; padding: 4px 8px; border-radius: 10px; font-size: 0.85em; font-weight: bold; }
-        .btn-volver { background-color: #3a506b; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-bottom: 20px; }
-    </style>
-    <script>
-        function togglePinInput() {
-            var rol = document.getElementById("rolSelect").value;
-            var pinContainer = document.getElementById("pinContainer");
-            pinContainer.style.display = (rol === "Gerente") ? "block" : "none";
-        }
-    </script>
-</head>
-<body>
-    <a href="{{ url_for('caja_mesas.gestionar_mesas') }}" class="btn-volver">⬅️ Volver a Mesas</a>
-    <h1>👥 Control Total de Usuarios y Monitor de Conexiones (Solo Gerente)</h1>
-    <div class="grid-container">
-        <!-- Registro Infinito de Usuarios -->
-        <div class="card">
-            <h2>➕ Registrar Nuevo Personal</h2>
-            <form method="POST">
-                <label>Nombre Completo del Trabajador:</label>
-                <input type="text" name="nombre" placeholder="Ej: Carlos Pérez" required>
-                <label>Usuario (para Login):</label>
-                <input type="text" name="usuario" placeholder="Ej: cperez" required>
-                <label>Contraseña Acceso:</label>
-                <input type="password" name="password" required>
-                <label>Rol Asignado:</label>
-                <select id="rolSelect" name="rol" onchange="togglePinInput()" required>
-                    <option value="Auxiliar">Auxiliar de Servicio (Mesero)</option>
-                    <option value="Gerente">Gerente / Administrador</option>
-                    <option value="Cajero">Cajero Principal</option>
-                    <option value="Cocina">Cocina / Bar</option>
-                </select>
-                <div id="pinContainer" style="display: none;">
-                    <label style="color: #e63946;">🔒 PIN Único de Autorización (Gerente):</label>
-                    <input type="password" name="pin" placeholder="Ej: 1234">
-                </div>
-                <button type="submit">Guardar y Habilitar en Sistema 🚀</button>
-            </form>
-        </div>
-        <!-- Módulo Cambio PIN -->
-        <div class="card" style="border: 2px solid #e63946;">
-            <h2 style="color: #e63946;">🔑 Cambiar PIN de Gerente</h2>
-            <form action="{{ url_for('caja_mesas.cambiar_pin_gerente') }}" method="POST">
-                <label>Usuario Gerente:</label>
-                <input type="text" name="usuario_gerente" required>
-                <label>Contraseña Gerente:</label>
-                <input type="password" name="password_gerente" required>
-                <label>Nuevo PIN:</label>
-                <input type="password" name="nuevo_pin" required>
-                <button type="submit" style="background-color: #e63946;">Actualizar PIN 🔒</button>
-            </form>
-        </div>
-    </div>
-    <!-- Monitor de Usuarios Registrados y Conectados -->
-    <div class="card" style="margin-top: 20px;">
-        <h2>📡 Monitor de Usuarios y Estado en Tiempo Real</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nombre</th>
-                    <th>Usuario (Login)</th>
-                    <th>Rol</th>
-                    <th>Estado Conexión</th>
-                    <th>Último Ingreso</th>
-                    <th style="text-align: center;">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for u in usuarios %}
-                    <tr>
-                        <td>{{ u.id }}</td>
-                        <td><strong>{{ u.nombre }}</strong></td>
-                        <td>{{ u.usuario }}</td>
-                        <td>{{ u.rol }}</td>
-                        <td>
-                            {% if u.estado_conexion == 'Online' %}
-                                <span class="badge-online">🟢 Conectado (Online)</span>
-                            {% else %}
-                                <span class="badge-offline">🔴 Desconectado (Offline)</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ u.ultima_conexion }}</td>
-                        <td style="text-align: center;">
-                            <button type="button" onclick="abrirModalClave('{{ u.id }}', '{{ u.nombre }}')" style="background-color: #fca311; color: #0b132b; padding: 6px 12px; font-size: 0.9em; width: auto; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                                🔑 Cambiar Clave
-                            </button>
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+import base64
+import io
+import requests
+import zipfile
 
-    <!-- MODAL PARA CAMBIAR CLAVE DE EMPLEADO -->
-    <div id="modalCambiarClave" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;">
-        <div style="background: #1c2541; padding: 30px; border-radius: 10px; width: 90%; max-width: 400px; border: 2px solid #48cae4; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
-            <h3 style="margin-top: 0; color: #48cae4;">🔑 Cambiar Clave a: <span id="nombreEmpleado" style="color: white;"></span></h3>
-            <form id="formCambiarClave" method="POST">
-                <label style="display: block; margin-bottom: 5px;">Nueva Contraseña:</label>
-                <input type="password" name="nueva_password" placeholder="Escribe la nueva clave" required style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #48cae4; background: #0b132b; color: white;">
-                <div style="display: flex; gap: 10px;">
-                    <button type="submit" style="background-color: #2a9d8f; flex: 1;">Guardar Clave</button>
-                    <button type="button" onclick="cerrarModalClave()" style="background-color: #e63946; flex: 1;">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
 
-    <script>
-    function abrirModalClave(id, nombre) {
-        document.getElementById('nombreEmpleado').innerText = nombre;
-        document.getElementById('formCambiarClave').action = "/admin/usuarios/cambiar_clave/" + id;
-        document.getElementById('modalCambiarClave').style.display = "flex";
+def enviar_documento_dian(documento_xml_str, consecutivo, tipo_doc="Invoice"):
+  url_dian = "https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc"
+  test_set_id = "ddcabf60-ba4c-49c4-8cd9-e1eb7dc8fda9"
+
+  dian_user = "1082898883"
+  dian_password = "12345"  # Probamos con el PIN en texto plano
+
+  if tipo_doc == "Invoice":
+    prefix = "FV"
+  elif tipo_doc == "CreditNote":
+    prefix = "NC"
+  else:
+    prefix = "ND"
+
+  file_name = f"{prefix}-{consecutivo}.xml"
+
+  # Empaquetar el XML en ZIP
+  zip_buffer = io.BytesIO()
+  with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+    zip_file.writestr(file_name, documento_xml_str)
+
+  zip_buffer.seek(0)
+  file_zip_base64 = base64.b64encode(zip_buffer.read()).decode("utf-8")
+
+  headers = {
+      "Content-Type": (
+          'application/soap+xml; charset=utf-8;'
+          ' action="http://wcf.dian.colombia/IWcfDianCustomerServices/SendTestSetAsync"'
+      )
+  }
+
+  soap_envelope = f"""<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" 
+               xmlns:wcf="http://wcf.dian.colombia"
+               xmlns:wsa="http://www.w3.org/2005/08/addressing"
+               xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
+               xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+   <soap:Header>
+      <wsa:Action soap:mustUnderstand="1">http://wcf.dian.colombia/IWcfDianCustomerServices/SendTestSetAsync</wsa:Action>
+      <wsa:To soap:mustUnderstand="1">{url_dian}</wsa:To>
+      <wsse:Security soap:mustUnderstand="true">
+         <wsse:UsernameToken>
+            <wsse:Username>{dian_user}</wsse:Username>
+            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">{dian_password}</wsse:Password>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soap:Header>
+   <soap:Body>
+      <wcf:SendTestSetAsync>
+         <wcf:fileName>{prefix}-{consecutivo}.zip</wcf:fileName>
+         <wcf:contentFile>{file_zip_base64}</wcf:contentFile>
+         <wcf:testSetId>{test_set_id}</wcf:testSetId>
+      </wcf:SendTestSetAsync>
+   </soap:Body>
+</soap:Envelope>"""
+
+  try:
+    response = requests.post(
+        url_dian, data=soap_envelope.encode("utf-8"), headers=headers, timeout=30
+    )
+    return {
+        "codigo_http": response.status_code,
+        "respuesta": response.text,
     }
+  except Exception as e:
+    return {"error": str(e)}
 
-    function cerrarModalClave() {
-        document.getElementById('modalCambiarClave').style.display = "none";
-    }
-    </script>
-</body>
-</html>
+
+xml_prueba = """<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+    <cbc:UBLVersionID>UBL 2.1</cbc:UBLVersionID>
+    <cbc:CustomizationID>1</cbc:CustomizationID>
+    <cbc:ProfileID>DIAN 2.1: Factura Electrónica de Venta</cbc:ProfileID>
+    <cbc:ID>SETP99000000</cbc:ID>
+    <cbc:IssueDate>2026-11-05</cbc:IssueDate>
+    <cbc:IssueTime>19:36:00-05:00</cbc:IssueTime>
+    <cbc:InvoiceTypeCode>01</cbc:InvoiceTypeCode>
+    <cbc:DocumentCurrencyCode>COP</cbc:DocumentCurrencyCode>
+    <cac:AccountingSupplierParty>
+        <cbc:AdditionalAccountID>1</cbc:AdditionalAccountID>
+        <cac:Party>
+            <cac:PartyIdentification>
+                <cbc:ID schemeID="3" schemeName="13">1082898883</cbc:ID>
+            </cac:PartyIdentification>
+            <cac:PartyLegalEntity>
+                <cbc:RegistrationName>IGOR POS</cbc:RegistrationName>
+            </cac:PartyLegalEntity>
+        </cac:Party>
+    </cac:AccountingSupplierParty>
+    <cac:AccountingCustomerParty>
+        <cbc:AdditionalAccountID>2</cbc:AdditionalAccountID>
+        <cac:Party>
+            <cac:PartyIdentification>
+                <cbc:ID schemeID="3" schemeName="13">222222222222</cbc:ID>
+            </cac:PartyIdentification>
+            <cac:PartyLegalEntity>
+                <cbc:RegistrationName>CLIENTE PRUEBAS DIAN</cbc:RegistrationName>
+            </cac:PartyLegalEntity>
+        </cac:Party>
+    </cac:AccountingCustomerParty>
+    <cac:LegalMonetaryTotal>
+        <cbc:LineExtensionAmount currencyID="COP">100000.00</cbc:LineExtensionAmount>
+        <cbc:TaxExclusiveAmount currencyID="COP">0.00</cbc:TaxExclusiveAmount>
+        <cbc:TaxInclusiveAmount currencyID="COP">100000.00</cbc:TaxInclusiveAmount>
+        <cbc:PayableAmount currencyID="COP">100000.00</cbc:PayableAmount>
+    </cac:LegalMonetaryTotal>
+    <cac:InvoiceLine>
+        <cbc:ID>1</cbc:ID>
+        <cbc:InvoicedQuantity unitCode="EA">1.00</cbc:InvoicedQuantity>
+        <cbc:LineExtensionAmount currencyID="COP">100000.00</cbc:LineExtensionAmount>
+        <cac:Item>
+            <cbc:Description>Servicio de Prueba</cbc:Description>
+            <cac:SellersItemIdentification>
+                <cbc:ID>P001</cbc:ID>
+            </cac:SellersItemIdentification>
+        </cac:Item>
+        <cac:Price>
+            <cbc:PriceAmount currencyID="COP">100000.00</cbc:PriceAmount>
+        </cac:Price>
+    </cac:InvoiceLine>
+</Invoice>"""
+
+print("=== PROBANDO CON PASSWORDTEXT PLANO ===")
+print(enviar_documento_dian(xml_prueba, 99000000, "Invoice"))

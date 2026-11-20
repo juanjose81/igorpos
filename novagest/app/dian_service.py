@@ -2,21 +2,17 @@ import hashlib
 import uuid
 import datetime
 import requests
+import zipfile
+import io
+import base64
 
 def enviar_factura_dian_api(factura_data, api_key=None, es_demo=True):
-    """
-    Servicio auxiliar para transmisión de Factura Electrónica.
-    En entorno de prueba/demo genera CUFE y token de consulta.
-    No bloquea ni altera el flujo principal de la aplicación.
-    """
     if es_demo or not api_key:
         cadena_cufe = f"{factura_data.get('numero')}{factura_data.get('total')}{datetime.datetime.now().isoformat()}"
         cufe_generado = hashlib.sha256(cadena_cufe.encode('utf-8')).hexdigest()
-        
         token_consulta = str(uuid.uuid4())
         id_fac = factura_data.get('id', '001')
         url_consulta = f"https://demo.igorpos.com/pages/ventas/ver_factura_pdf.php?idFactura={id_fac}&token={token_consulta}"
-        
         return {
             "exito": True,
             "cufe": cufe_generado,
@@ -30,7 +26,6 @@ def enviar_factura_dian_api(factura_data, api_key=None, es_demo=True):
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
-    
     payload = {
         "number": factura_data.get('numero'),
         "customer": {
@@ -61,32 +56,42 @@ def enviar_factura_dian_api(factura_data, api_key=None, es_demo=True):
         "mensaje": "No se pudo transmitir en tiempo real, guardada de forma local."
     }
 
-
-def enviar_set_pruebas_dian(documento_xml_str, consecutivo):
-    """
-    Envía un documento de prueba (Factura, Nota Crédito o Nota Débito) 
-    al Web Service de habilitación de la DIAN usando peticiones SOAP directas.
-    """
-    url_dian = "https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc?wsdl"
+def enviar_set_pruebas_dian(documento_xml_str, consecutivo, tipo_doc="Invoice"):
+    url_dian = "https://vpfe-hab.dian.gov.co/WcfDianCustomerServices.svc"
     test_set_id = "e2466a37-2348-4cae-9617-c7a9190b2a5f"
+    
+    if tipo_doc == "Invoice":
+        prefijo_nombre = "FV"
+    elif tipo_doc == "CreditNote":
+        prefijo_nombre = "NC"
+    else:
+        prefijo_nombre = "ND"
+        
+    nombre_archivo = f"{prefijo_nombre}-{consecutivo}.xml"
+    
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        zip_file.writestr(nombre_archivo, documento_xml_str)
+    
+    zip_buffer.seek(0)
+    file_zip_base64 = base64.b64encode(zip_buffer.read()).decode('utf-8')
     
     headers = {
         "Content-Type": "text/xml; charset=utf-8",
         "SOAPAction": "http://wcf.dian.colombia/IWcfDianCustomerServices/SendTestSetAsync"
     }
     
-    soap_envelope = f"""<?xml version="1.0" encoding="utf-8"?>
-    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wcf="http://wcf.dian.colombia">
-       <soapenv:Header/>
-       <soapenv:Body>
-          <wcf:SendTestSetAsync>
-             <wcf:fileName>FE-{consecutivo}.xml</wcf:fileName>
-             <wcf:fileZip>{documento_xml_str}</wcf:fileZip>
-             <wcf:testSetId>{test_set_id}</wcf:testSetId>
-          </wcf:SendTestSetAsync>
-       </soapenv:Body>
-    </soapenv:Envelope>
-    """
+    soap_envelope = '<?xml version="1.0" encoding="utf-8"?>' + \
+                    '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wcf="http://wcf.dian.colombia">' + \
+                    '<soapenv:Header/>' + \
+                    '<soapenv:Body>' + \
+                    '<wcf:SendTestSetAsync>' + \
+                    f'<wcf:fileName>{prefijo_nombre}-{consecutivo}.zip</wcf:fileName>' + \
+                    f'<wcf:fileZip>{file_zip_base64}</wcf:fileZip>' + \
+                    f'<wcf:testSetId>{test_set_id}</wcf:testSetId>' + \
+                    '</wcf:SendTestSetAsync>' + \
+                    '</soapenv:Body>' + \
+                    '</soapenv:Envelope>'
     
     try:
         response = requests.post(url_dian, data=soap_envelope.encode('utf-8'), headers=headers, timeout=30)

@@ -335,7 +335,6 @@
             <a href="{{ url_for('auth.registro') }}" class="btn btn-primary">Registrarse</a>
         </div>
     </header>
-
     <!-- Sección Hero Principal -->
     <section class="hero" id="inicio">
         <div class="hero-content">
@@ -363,7 +362,6 @@
             </div>
         </div>
     </section>
-
     <!-- SECCIÓN DE FUNCIONES CLAVE -->
     <section id="funciones">
         <div class="features-grid">
@@ -385,7 +383,6 @@
             </div>
         </div>
     </section>
-
     <!-- SECCIÓN DE PRECIOS -->
     <section id="precios" class="pricing-section">
         <div class="text-center max-w-2xl mx-auto mb-12">
@@ -404,9 +401,8 @@
                     <li><i class="fa-solid fa-check text-green-400 me-2"></i> Soporte técnico prioritario</li>
                     <li><i class="fa-solid fa-check text-green-400 me-2"></i> Actualizaciones automáticas en la nube</li>
                 </ul>
-                <a href="https://checkout.wompi.co/l/5tp88O" target="_blank" class="btn btn-primary w-full justify-center">Elegir Plan Mensual</a>
+                <a href="{{ url_for('wompi.seleccionar_plan', tipo='monthly') }}" class="btn btn-primary w-full justify-center">Elegir Plan Mensual</a>
             </div>
-
             <!-- Plan Anual (Popular) -->
             <div class="pricing-card popular">
                 <span class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-sky-500 text-slate-950 font-bold text-xs px-3 py-1 rounded-full uppercase tracking-wider">Ahorra Más</span>
@@ -418,11 +414,10 @@
                     <li><i class="fa-solid fa-check text-green-400 me-2"></i> Descuento especial aplicado</li>
                     <li><i class="fa-solid fa-check text-green-400 me-2"></i> Garantía de disponibilidad 99.9%</li>
                 </ul>
-                <a href="https://checkout.wompi.co/l/dYxdWp" target="_blank" class="btn btn-primary w-full justify-center">Elegir Plan Anual</a>
+                <a href="{{ url_for('wompi.seleccionar_plan', tipo='yearly') }}" class="btn btn-primary w-full justify-center">Elegir Plan Anual</a>
             </div>
         </div>
     </section>
-
     <!-- SECCIÓN DE CONTACTO -->
     <section id="contacto" class="contact-section">
         <div class="max-w-xl mx-auto">
@@ -434,7 +429,6 @@
             </a>
         </div>
     </section>
-
     <!-- ESTADÍSTICAS DE CONFIANZA -->
     <section class="stats-section">
         <div class="stat-item">
@@ -454,10 +448,10 @@
             <p>Soporte técnico</p>
         </div>
     </section>
-
     <!-- Botón flotante de WhatsApp -->
     <a href="https://wa.me/573213860752?text=Hola!%20Me%20gustaría%20saber%20más%20sobre%20IGOR%20POS" class="float-whatsapp" target="_blank" title="Contactar por WhatsApp">
         💬
     </a>
 </body>
 </html>
+```[cite: 5, 9]
